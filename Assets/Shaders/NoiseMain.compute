@@ -1,9 +1,10 @@
 ﻿// Each #kernel tells which function to compile
 #pragma kernel SimpleNoise
+#include "SimpleNoise.compute"
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
+RWTexture3D<float4> Result;
 
 [numthreads(8,8,8)]
 void SimpleNoise (uint3 id : SV_DispatchThreadID)
