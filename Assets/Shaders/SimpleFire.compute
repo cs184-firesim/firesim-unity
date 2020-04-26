@@ -16,16 +16,8 @@ RWTexture3D<float4> divergenceTex;
 int size;
 
 // timeStep of simulation
-float timeStep = 0.01;
-
-
-
+float timeStep = 0.00001;
 SamplerState samplervelocityTex;
-
-
-
-
-
 
 float3 cellIndex2TexCoord(float3 index)
 {
@@ -48,7 +40,8 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
-
+    if (id.y == 0)
+        return;
     float3 cellVelocity = velocityTex[id.xyz].rgb;
 
     float3 pos = id - timeStep * cellVelocity;

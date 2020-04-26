@@ -3,8 +3,6 @@
     Properties
     {
         _MainTex("Texture", 2D) = "white" {} // Source frame buffer
-        _Noise("Noise", 3D) = "white" {} // Noise texture
-        _Velocity("Velocity", 3D) = "white" {} // Velocity texture
     }
     SubShader
     {
@@ -35,6 +33,8 @@
             sampler2D _CameraDepthTexture;
             Texture3D<float4> Noise;
             SamplerState samplerNoise;
+            Texture3D<float4> Velocity;
+            SamplerState samplerVelocity;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             // Container
             float3 boundsMin;
@@ -101,18 +101,19 @@
                 }
 
                 // Hit
-                // Sample noise
+                // Sample velocity
                 float dstTravelled = 0;
                 float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
                 float totalDensity = 0;
                 float distLimit = min(depth_linear - hit.x, hit.y);
                 while (dstTravelled < distLimit) {
                     float3 rayPos = origin + dir * (dstTravelled + hit.x);
-                    totalDensity += max(Noise.SampleLevel(samplerNoise, rayPos, 0), 0);
+                    totalDensity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
-                return col * transmittance;
+                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 0), 0);
+                // return col * transmittance;
 
             }
 

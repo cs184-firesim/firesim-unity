@@ -68,6 +68,11 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref velocityTexRes, size);
 		createTexture(ref pressureTex, size);
         createTexture(ref divergenceTex, size);
+		// Switch res
+		RenderTexture temp;
+		temp = velocityTex;
+		velocityTex = velocityTexRes;
+		velocityTexRes = temp;
         // Find kernel 
         int initHandle = fireComputeShader.FindKernel("InitFire");
         int advectionHandle = fireComputeShader.FindKernel("Advection");
@@ -93,7 +98,7 @@ public class PostProcess : MonoBehaviour
 		}
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
 		// Output
-		material.SetTexture("_Velocity", velocityTex);
+		material.SetTexture("Velocity", velocityTexRes);
 	}
 
 	// Source: framebuffer after unity's pipeline
