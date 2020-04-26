@@ -9,17 +9,22 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
-Texture3D velocityTex;
+Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
 RWTexture3D<float4> pressureTex;
 RWTexture3D<float4> divergenceTex;
 int size;
+
 // timeStep of simulation
 float timeStep = 0.01;
 
 
 
 SamplerState samplervelocityTex;
+
+
+
+
 
 
 float3 cellIndex2TexCoord(float3 index)
@@ -47,16 +52,35 @@ void Advection (uint3 id : SV_DispatchThreadID)
     float3 cellVelocity = velocityTex[id.xyz].rgb;
 
     float3 pos = id - timeStep * cellVelocity;
-    pos = cellIndex2TexCoord(pos);
-
+    // pos = cellIndex2TexCoord(pos);
 
 
     velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
 
+    /*
+    // My own lerp
+    // boundary conditions
+
+    pos.xyz = abs(pos.xyz);
+    if (pos.x > size) pos.x = 2 * size - pos.x;
+    if (pos.y > size) pos.y = 2 * size - pos.y;
+    if (pos.z > size) pos.z = 2 * size - pos.z;
+
+    // lerp
+    int lx = floor(pos.x); int hx = ceil(pos.x);
+    int ly = floor(pos.y); int hy = ceil(pos.y);
+    int lz = floor(pos.z); int hz = ceil(pos.z);
+    int lxd = pos.x - lx; int hxd = hx - pos.x;
+    int lyd = pos.y - ly; int hyd = hy - pos.y;
+    int lzd = pos.z - lz; int hzd = hz - pos.z;
+
+    velocityTexRes[id] = velocityTex[float3(lx, ly, lz)];
+    */
 
 
 
-    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+
+    
 }
 
 [numthreads(8,8,8)]
@@ -64,6 +88,7 @@ void Divergence (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
 
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 
 }
 

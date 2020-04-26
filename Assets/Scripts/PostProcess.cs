@@ -75,10 +75,14 @@ public class PostProcess : MonoBehaviour
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
 		int projectionHandle = fireComputeShader.FindKernel("Projection");
 		// Input
-		fireComputeShader.SetTexture(initHandle, "velocityTex", velocityTex);
-		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
-		fireComputeShader.SetTexture(initHandle, "pressureTex", pressureTex);
-		fireComputeShader.SetTexture(initHandle, "divergenceTex", divergenceTex);
+		foreach (int handle in new int[] { initHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
+		{
+			fireComputeShader.SetTexture(handle, "velocityTex", velocityTex);
+			fireComputeShader.SetTexture(handle, "velocityTexRes", velocityTexRes);
+			fireComputeShader.SetTexture(handle, "pressureTex", pressureTex);
+			fireComputeShader.SetTexture(handle, "divergenceTex", divergenceTex);
+		}
+
 		fireComputeShader.SetInt("size", size);
 		// Calculate
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
