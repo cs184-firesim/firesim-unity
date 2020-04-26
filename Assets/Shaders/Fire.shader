@@ -30,6 +30,18 @@
                 float3 viewVector : TEXCOORD1;
             };
 
+            // Textures
+            sampler2D _MainTex;
+            sampler2D _CameraDepthTexture;
+            Texture3D<float4> Noise;
+            SamplerState samplerNoise;
+            float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
+            // Container
+            float3 boundsMin;
+            float3 boundsMax;
+            // Ray marching
+            int marchSteps;
+
             // Ray box dst
             // https://github.com/SebLague/Clouds/blob/44e81a483504817e859d8e1b654a952f8a978a1a/Assets/Scripts/Clouds/Shaders/Clouds.shader
             // Returns (dstToBox, dstInsideBox). If ray misses box, dstInsideBox will be zero
@@ -56,13 +68,6 @@
                 return float2(dstToBox, dstInsideBox);
             }
 
-            sampler2D _MainTex;
-            sampler3D _Noise;
-            sampler3D _Velocity;
-            float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
-            float3 boundsMin;
-            float3 boundsMax;
-
             v2f vert(appdata v)
             {
                 v2f o;
@@ -78,16 +83,37 @@
             }
 
             fixed4 frag(v2f i) : SV_Target {
-                // sample the texture
+                // Sample the source frame buffer
                 fixed4 col = tex2D(_MainTex, i.uv);
+                // Calculate depth
+                float depth_non_linear = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+                float depth_linear = LinearEyeDepth(depth_non_linear) * length(i.viewVector);
+                // Generate ray
                 float3 origin = _WorldSpaceCameraPos;
                 float3 dir = normalize(i.viewVector);
-
+                // Test intersection
                 float2 hit = rayBoxDst(boundsMin, boundsMax, origin, dir);
-                if (hit.y <= 0) { // Didn't hit
+
+                // Didn't hit
+                // Also this is a very crude solution for solving z-fighting
+                if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
                     return col;
                 }
-                return tex3D(_Velocity, float3(i.uv, 0));
+
+                // Hit
+                // Sample noise
+                float dstTravelled = 0;
+                float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
+                float totalDensity = 0;
+                float distLimit = min(depth_linear - hit.x, hit.y);
+                while (dstTravelled < distLimit) {
+                    float3 rayPos = origin + dir * (dstTravelled + hit.x);
+                    totalDensity += max(Noise.SampleLevel(samplerNoise, rayPos, 0), 0);
+                    dstTravelled += stepSize;
+                }
+                float transmittance = exp(-totalDensity);
+                return col * transmittance;
+
             }
 
             ENDCG

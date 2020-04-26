@@ -8,21 +8,52 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture3D<float4> velocityTex;
+
+Texture3D velocityTex;
+RWTexture3D<float4> velocityTexRes;
 RWTexture3D<float4> pressureTex;
 RWTexture3D<float4> divergenceTex;
+int size;
+// timeStep of simulation
+float timeStep = 0.01;
+
+
+
+SamplerState samplervelocityTex;
+
+
+float3 cellIndex2TexCoord(float3 index)
+{
+    // Convert a value in the range [0,gridSize] to one in the range [0,1].
+    return float3(index.x / size,
+    index.y / size,
+    (index.z+0.5) / size);
+}
 
 [numthreads(8,8,8)]
 void InitFire (uint3 id : SV_DispatchThreadID) {
     float3 v = id;
-    
-    
+
+    if (id.y != 0) return;
+
+    velocityTexRes[id.xyz] = float4(0.0, 1.0, 0.0, 0.0);
 }
 
 [numthreads(8,8,8)]
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
+
+    float3 cellVelocity = velocityTex[id.xyz].rgb;
+
+    float3 pos = id - timeStep * cellVelocity;
+    pos = cellIndex2TexCoord(pos);
+
+
+
+    velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
+
+
 
 
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);

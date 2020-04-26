@@ -16,10 +16,14 @@ public class PostProcess : MonoBehaviour
 	public ComputeShader noiseShader;
 
     public ComputeShader fireComputeShader;
-	//RenderTexture renderTexture;
+	RenderTexture renderTexture;
 	RenderTexture velocityTex;
-    RenderTexture pressureTex;
+	RenderTexture velocityTexRes;
+	RenderTexture pressureTex;
     RenderTexture divergenceTex;
+
+    // Ray marching
+    public int marchSteps = 4;
 
 	// If the specified texture does not exist, create it
     // Source: https://github.com/SebLague/Clouds
@@ -44,27 +48,27 @@ public class PostProcess : MonoBehaviour
     }
 
 	private void updateNoise() {
-		// TODO: Call the right kernels and store to the right buffers
-		// Example:
 
-		//// If texture does not exist, create it
-		//createTexture(ref renderTexture, size);
-		//// Find kernel
-		//int kernelHandle = noiseShader.FindKernel("SimpleNoise");
-		//// Input
-		//noiseShader.SetTexture(kernelHandle, "Result", renderTexture);
-		//// Calculate
-		//noiseShader.Dispatch(kernelHandle, size / 8, size / 8, size / 8);
-		//// Output
-		//material.SetTexture("_Noise", renderTexture);
+        // If texture does not exist, create it
+		createTexture(ref renderTexture, size);
+        // Find kernel
+		int kernelHandle = noiseShader.FindKernel("SimpleNoise");
+        // Input
+		noiseShader.SetTexture(kernelHandle, "Result", renderTexture);
+        // Calculate
+		noiseShader.Dispatch(kernelHandle, size / 8, size / 8, size / 8);
+        // Output
+		material.SetTexture("Noise", renderTexture);
+
 	}
 
     private void updateFire() {
 		// If texture does not exist, create it
 		createTexture(ref velocityTex, size);
-        createTexture(ref pressureTex, size);
+		createTexture(ref velocityTexRes, size);
+		createTexture(ref pressureTex, size);
         createTexture(ref divergenceTex, size);
-        // Find kernel TODO: figure out where fireShader is initialized
+        // Find kernel 
         int initHandle = fireComputeShader.FindKernel("InitFire");
         int advectionHandle = fireComputeShader.FindKernel("Advection");
 		int divergenceHandle = fireComputeShader.FindKernel("Divergence");
@@ -72,9 +76,10 @@ public class PostProcess : MonoBehaviour
 		int projectionHandle = fireComputeShader.FindKernel("Projection");
 		// Input
 		fireComputeShader.SetTexture(initHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(initHandle, "pressureTex", pressureTex);
 		fireComputeShader.SetTexture(initHandle, "divergenceTex", divergenceTex);
-		fireComputeShader.SetInt(initHandle, "size", size);
+		fireComputeShader.SetInt("size", size);
 		// Calculate
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
@@ -90,7 +95,8 @@ public class PostProcess : MonoBehaviour
 	// Source: framebuffer after unity's pipeline
 	private void OnRenderImage(RenderTexture source, RenderTexture destination) {
         createMaterial(ref material, ref fireShader);
-		// Set container bounds
+        // Pass variables to shader
+		material.SetInt ("marchSteps", marchSteps);
 		material.SetVector("boundsMin", container.position - container.localScale / 2);
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
 		// Generate noise
