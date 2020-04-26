@@ -4,6 +4,7 @@
     {
         _MainTex("Texture", 2D) = "white" {} // Source frame buffer
         _Noise("Noise", 3D) = "white" {} // Noise texture
+        _Velocity("Velocity", 3D) = "white" {} // Velocity texture
     }
     SubShader
     {
@@ -57,6 +58,7 @@
 
             sampler2D _MainTex;
             sampler3D _Noise;
+            sampler3D _Velocity;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             float3 boundsMin;
             float3 boundsMax;

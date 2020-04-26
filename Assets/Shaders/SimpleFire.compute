@@ -1,0 +1,53 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+
+#pragma kernel InitFire
+#pragma kernel Advection
+#pragma kernel Divergence
+#pragma kernel Jacobi
+#pragma kernel Projection
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture3D<float4> velocityTex;
+RWTexture3D<float4> pressureTex;
+RWTexture3D<float4> divergenceTex;
+
+[numthreads(8,8,8)]
+void InitFire (uint3 id : SV_DispatchThreadID) {
+    float3 v = id;
+    
+    
+}
+
+[numthreads(8,8,8)]
+void Advection (uint3 id : SV_DispatchThreadID)
+{
+    float3 v = id;
+
+
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}
+
+[numthreads(8,8,8)]
+void Divergence (uint3 id : SV_DispatchThreadID)
+{
+    float3 v = id;
+
+
+}
+
+[numthreads(8,8,8)]
+void Jacobi (uint3 id : SV_DispatchThreadID)
+{
+    float3 v = id;
+
+
+}
+
+[numthreads(8,8,8)]
+void Projection (uint3 id : SV_DispatchThreadID)
+{
+    float3 v = id;
+
+
+}
