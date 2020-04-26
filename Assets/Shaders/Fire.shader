@@ -56,6 +56,7 @@
             }
 
             sampler2D _MainTex;
+            sampler2D _CameraDepthTexture;
             sampler3D _Noise;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             float3 boundsMin;
@@ -76,15 +77,23 @@
             }
 
             fixed4 frag(v2f i) : SV_Target {
-                // sample the texture
+                // Sample the source frame buffer
                 fixed4 col = tex2D(_MainTex, i.uv);
+                // Calculate depth
+                float depth_non_linear = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+                float depth_linear = LinearEyeDepth(depth_non_linear) * length(i.viewVector);
+                // Generate ray
                 float3 origin = _WorldSpaceCameraPos;
                 float3 dir = normalize(i.viewVector);
-
+                // Test intersection
                 float2 hit = rayBoxDst(boundsMin, boundsMax, origin, dir);
-                if (hit.y <= 0) { // Didn't hit
+
+                // Didn't hit
+                // Also this is a very crude solution for solving z-fighting
+                if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
                     return col;
                 }
+                // Hit
                 return tex3D(_Noise, float3(i.uv, 0));
             }
 
