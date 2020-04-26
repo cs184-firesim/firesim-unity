@@ -5,13 +5,14 @@ using UnityEngine;
 [ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class PostProcess : MonoBehaviour
 {
-	public Shader fireShader;
+	public Shader fireShader; // Input fire voxels, output a render of the fire
 	Material material; // Material for fireShader
 	public Transform container; // Container for our fire
 
 	// Noise
 	public int size = 256; // As of now, needs to be a mutliple of 8
 	public float scale = 50; // TODO: Use this value
+    public float step_size = .001; // TODO: Use this value
 	public ComputeShader noiseShader;
 	RenderTexture renderTexture;
 
@@ -50,6 +51,7 @@ public class PostProcess : MonoBehaviour
 		material.SetTexture("_Noise", renderTexture);
 	}
 
+    // Source: framebuffer after unity's pipeline
 	private void OnRenderImage(RenderTexture source, RenderTexture destination) {
         createMaterial(ref material, ref fireShader);
 		// Set container bounds
