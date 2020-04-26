@@ -16,6 +16,9 @@ public class PostProcess : MonoBehaviour
 	public ComputeShader noiseShader;
 	RenderTexture renderTexture;
 
+    // Ray marching
+    public int marchSteps = 4;
+
 	// If the specified texture does not exist, create it
     // Source: https://github.com/SebLague/Clouds
     void createTexture (ref RenderTexture texture, int resolution) {
@@ -48,13 +51,14 @@ public class PostProcess : MonoBehaviour
         // Calculate
 		noiseShader.Dispatch(kernelHandle, size / 8, size / 8, size / 8);
         // Output
-		material.SetTexture("_Noise", renderTexture);
+		material.SetTexture("Noise", renderTexture);
 	}
 
     // Source: framebuffer after unity's pipeline
 	private void OnRenderImage(RenderTexture source, RenderTexture destination) {
         createMaterial(ref material, ref fireShader);
-		// Set container bounds
+        // Pass variables to shader
+		material.SetInt ("marchSteps", marchSteps);
 		material.SetVector("boundsMin", container.position - container.localScale / 2);
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
 		// Generate noise

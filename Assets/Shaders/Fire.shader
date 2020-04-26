@@ -29,6 +29,18 @@
                 float3 viewVector : TEXCOORD1;
             };
 
+            // Textures
+            sampler2D _MainTex;
+            sampler2D _CameraDepthTexture;
+            Texture3D<float4> Noise;
+            SamplerState samplerNoise;
+            float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
+            // Container
+            float3 boundsMin;
+            float3 boundsMax;
+            // Ray marching
+            int marchSteps;
+
             // Ray box dst
             // https://github.com/SebLague/Clouds/blob/44e81a483504817e859d8e1b654a952f8a978a1a/Assets/Scripts/Clouds/Shaders/Clouds.shader
             // Returns (dstToBox, dstInsideBox). If ray misses box, dstInsideBox will be zero
@@ -54,13 +66,6 @@
                 float dstInsideBox = max(0, dstB - dstToBox);
                 return float2(dstToBox, dstInsideBox);
             }
-
-            sampler2D _MainTex;
-            sampler2D _CameraDepthTexture;
-            sampler3D _Noise;
-            float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
-            float3 boundsMin;
-            float3 boundsMax;
 
             v2f vert(appdata v)
             {
@@ -94,7 +99,18 @@
                     return col;
                 }
                 // Hit
-                return tex3D(_Noise, float3(i.uv, 0));
+                // Sample noise
+                float dstTravelled = 0;
+                float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
+                float totalDensity = 0;
+                float distLimit = min(depth_linear - hit.x, hit.y);
+                while (dstTravelled < distLimit) {
+                    float3 rayPos = origin + dir * (dstTravelled + hit.x);
+                    totalDensity += max(Noise.SampleLevel(samplerNoise, rayPos, 0), 0);
+                    dstTravelled += stepSize;
+                }
+                float transmittance = exp(-totalDensity);
+                return col * transmittance;
             }
 
             ENDCG
