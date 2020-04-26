@@ -14,7 +14,9 @@ public class PostProcess : MonoBehaviour
 	public float scale = 50; // TODO: Use this value
     public float step_size = .001f; // TODO: Use this value
 	public ComputeShader noiseShader;
-	RenderTexture renderTexture;
+	RenderTexture velocityTex;
+    RenderTexture pressureTex;
+    RenderTexture divergenceTex;
 
 	// If the specified texture does not exist, create it
     // Source: https://github.com/SebLague/Clouds
@@ -23,7 +25,7 @@ public class PostProcess : MonoBehaviour
             if (texture != null) {
                 texture.Release ();
             }
-            texture = new RenderTexture (resolution, resolution, 0, RenderTextureFormat.RFloat);
+            texture = new RenderTexture (resolution, resolution, 0, RenderTextureFormat.ARGBFloat);
             texture.volumeDepth = resolution;
             texture.enableRandomWrite = true;
             texture.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
@@ -39,16 +41,19 @@ public class PostProcess : MonoBehaviour
     }
 
 	private void updateNoise() {
-        // If texture does not exist, create it
-		createTexture(ref renderTexture, size);
-        // Find kernel
-		int kernelHandle = noiseShader.FindKernel("SimpleNoise");
-        // Input
-		noiseShader.SetTexture(kernelHandle, "Result", renderTexture);
-        // Calculate
-		noiseShader.Dispatch(kernelHandle, size / 8, size / 8, size / 8);
-        // Output
-		material.SetTexture("_Noise", renderTexture);
+        // TODO: Call the right kernels and store to the right buffers
+        // Example:
+
+        // // If texture does not exist, create it
+		// createTexture(ref renderTexture, size);
+        // // Find kernel
+		// int kernelHandle = noiseShader.FindKernel("SimpleNoise");
+        // // Input
+		// noiseShader.SetTexture(kernelHandle, "Result", renderTexture);
+        // // Calculate
+		// noiseShader.Dispatch(kernelHandle, size / 8, size / 8, size / 8);
+        // // Output
+		// material.SetTexture("_Noise", renderTexture);
 	}
 
     // Source: framebuffer after unity's pipeline
