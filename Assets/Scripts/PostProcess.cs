@@ -12,7 +12,7 @@ public class PostProcess : MonoBehaviour
 	// Noise
 	public int size = 256; // As of now, needs to be a mutliple of 8
 	public float scale = 50; // TODO: Use this value
-    public float step_size = .001; // TODO: Use this value
+    public float step_size = .001f; // TODO: Use this value
 	public ComputeShader noiseShader;
 	RenderTexture renderTexture;
 
