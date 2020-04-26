@@ -74,6 +74,7 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(initHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(initHandle, "pressureTex", pressureTex);
 		fireComputeShader.SetTexture(initHandle, "divergenceTex", divergenceTex);
+		fireComputeShader.SetInt(initHandle, "size", size);
 		// Calculate
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
@@ -94,6 +95,9 @@ public class PostProcess : MonoBehaviour
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
 		// Generate noise
 		updateNoise();
+		// Generate Fire
+		updateFire();
+
 		// Render
 		Graphics.Blit(source, destination, material);
 	}

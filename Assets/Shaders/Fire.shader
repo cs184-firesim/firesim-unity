@@ -87,7 +87,7 @@
                 if (hit.y <= 0) { // Didn't hit
                     return col;
                 }
-                return tex3D(_Noise, float3(i.uv, 0));
+                return tex3D(_Velocity, float3(i.uv, 0));
             }
 
             ENDCG
