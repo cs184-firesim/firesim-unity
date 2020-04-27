@@ -27,13 +27,14 @@ public class PostProcess : MonoBehaviour
 
 	// If the specified texture does not exist, create it
     // Source: https://github.com/SebLague/Clouds
-    void createTexture (ref RenderTexture texture, int resolution) {
+    void createTexture (ref RenderTexture texture, int resolution, int num_channels) {
         if (texture == null || !texture.IsCreated () || texture.width != resolution || texture.height != resolution || texture.volumeDepth != resolution) {
             if (texture != null) {
                 texture.Release ();
             }
-            texture = new RenderTexture (resolution, resolution, 0, RenderTextureFormat.ARGBFloat);
-            texture.volumeDepth = resolution;
+			if (num_channels == 4) texture = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.ARGBFloat);
+			else if (num_channels == 1) texture = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.RFloat);
+			texture.volumeDepth = resolution;
             texture.enableRandomWrite = true;
             texture.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
             texture.wrapMode = TextureWrapMode.Repeat;
@@ -50,7 +51,7 @@ public class PostProcess : MonoBehaviour
 	private void updateNoise() {
 
         // If texture does not exist, create it
-		createTexture(ref renderTexture, size);
+		createTexture(ref renderTexture, size, 4);
         // Find kernel
 		int kernelHandle = noiseShader.FindKernel("SimpleNoise");
         // Input
@@ -64,10 +65,10 @@ public class PostProcess : MonoBehaviour
 
     private void updateFire() {
 		// If texture does not exist, create it
-		createTexture(ref velocityTex, size);
-		createTexture(ref velocityTexRes, size);
-		createTexture(ref pressureTex, size);
-        createTexture(ref divergenceTex, size);
+		createTexture(ref velocityTex, size, 4);
+		createTexture(ref velocityTexRes, size, 4);
+		createTexture(ref pressureTex, size, 1);
+        createTexture(ref divergenceTex, size, 1);
 		// Switch res
 		RenderTexture temp;
 		temp = velocityTex;
@@ -92,8 +93,13 @@ public class PostProcess : MonoBehaviour
 		// Calculate
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
+		// Switch res
+		temp = velocityTex;
+		velocityTex = velocityTexRes;
+		velocityTexRes = temp;
 		fireComputeShader.Dispatch(divergenceHandle, size / 8, size / 8, size / 8);
-		for (int itr = 0; itr < 20; itr++) {
+		for (int itr = 0; itr < 20; itr++)
+		{
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
 		}
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
