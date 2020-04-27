@@ -96,9 +96,9 @@
 
                 // Didn't hit
                 // Also this is a very crude solution for solving z-fighting
-                if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
-                    return col;
-                }
+                // if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
+                //     return col;
+                // }
 
                 // Hit
                 // Sample velocity
