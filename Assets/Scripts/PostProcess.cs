@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[ExecuteInEditMode, ImageEffectAllowedInSceneView]
+// [ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class PostProcess : MonoBehaviour
 {
 	public Shader fireShader; // Input fire voxels, output a render of the fire
@@ -12,7 +12,7 @@ public class PostProcess : MonoBehaviour
 	// Noise
 	public int size = 256; // As of now, needs to be a mutliple of 8
 	public float scale = 50; // TODO: Use this value
-    public float step_size = .001f; // TODO: Use this value
+    public float step_size = 0.00001f; // TODO: Use this value
 	public ComputeShader noiseShader;
 
     public ComputeShader fireComputeShader;
@@ -114,12 +114,16 @@ public class PostProcess : MonoBehaviour
 		material.SetInt ("marchSteps", marchSteps);
 		material.SetVector("boundsMin", container.position - container.localScale / 2);
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
-		// Generate noise
-		updateNoise();
-		// Generate Fire
-		updateFire();
-
 		// Render
 		Graphics.Blit(source, destination, material);
 	}
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            print("Updating fire");
+			updateFire();
+        }
+    }
+
 }
