@@ -66,12 +66,19 @@ void InitPressure (uint3 id : SV_DispatchThreadID) {
     float dz = v.z - half_size;
     float from_center = sqrt(dx * dx + dz * dz + dy * dy);
 
+
+    if (from_center > RADIUS + 5 || from_center < RADIUS - 5) return;
+    
+    temperatureTexRes[id.xyz] = 20.0;
+    densityTexRes[id.xyz] = 1.0;
+
     if (from_center > RADIUS + 1 || from_center < RADIUS - 1) return;
     //if (v.y > 1) return;
 
     pressureTexRes[id.xyz] = 1.0;
-    temperatureTexRes[id.xyz] = 20.0;
-    densityTexRes[id.xyz] = 1.0;
+
+    
+    
 }
 
 
