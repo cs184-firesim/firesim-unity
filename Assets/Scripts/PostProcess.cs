@@ -76,32 +76,44 @@ public class PostProcess : MonoBehaviour
 		velocityTexRes = temp;
         // Find kernel 
         int initHandle = fireComputeShader.FindKernel("InitFire");
-        int advectionHandle = fireComputeShader.FindKernel("Advection");
+        int pressureHandle = fireComputeShader.FindKernel("InitPressure");
+		int advectionHandle = fireComputeShader.FindKernel("Advection");
 		int divergenceHandle = fireComputeShader.FindKernel("Divergence");
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
 		int projectionHandle = fireComputeShader.FindKernel("Projection");
-		// Input
-		foreach (int handle in new int[] { initHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
+		// static Input
+		foreach (int handle in new int[] {initHandle, pressureHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
 		{
-			fireComputeShader.SetTexture(handle, "velocityTex", velocityTex);
-			fireComputeShader.SetTexture(handle, "velocityTexRes", velocityTexRes);
 			fireComputeShader.SetTexture(handle, "pressureTex", pressureTex);
 			fireComputeShader.SetTexture(handle, "divergenceTex", divergenceTex);
 		}
-
 		fireComputeShader.SetInt("size", size);
 		// Calculate
-		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
+		fireComputeShader.SetTexture(initHandle, "velocityTex", velocityTexRes);
+		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTex);
+		fireComputeShader.SetTexture(advectionHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(advectionHandle, "velocityTexRes", velocityTexRes);
+		// fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
 		// Switch res
 		temp = velocityTex;
 		velocityTex = velocityTexRes;
 		velocityTexRes = temp;
+
+		fireComputeShader.SetTexture(divergenceHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(divergenceHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetTexture(jacobiHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(jacobiHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetTexture(projectionHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(projectionHandle, "velocityTexRes", velocityTexRes);
+
 		fireComputeShader.Dispatch(divergenceHandle, size / 8, size / 8, size / 8);
 		for (int itr = 0; itr < 20; itr++)
 		{
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
 		}
+		fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
+
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
 		// Output
 		material.SetTexture("Velocity", velocityTexRes);

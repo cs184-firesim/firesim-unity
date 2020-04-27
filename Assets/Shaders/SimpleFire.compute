@@ -5,19 +5,20 @@
 #pragma kernel Divergence
 #pragma kernel Jacobi
 #pragma kernel Projection
+#pragma kernel InitPressure
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
 Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
-RWTexture3D<float4> pressureTex;
-RWTexture3D<float4> divergenceTex;
+RWTexture3D<float> pressureTex;
+RWTexture3D<float> divergenceTex;
 int size;
 
 // timeStep of simulation
-float timeStep = 0.00001;
-SamplerState samplervelocityTex;
+float timeStep = 0.1;
+// SamplerState samplervelocityTex;
 
 float3 cellIndex2TexCoord(float3 index)
 {
@@ -30,25 +31,40 @@ float3 cellIndex2TexCoord(float3 index)
 [numthreads(8,8,8)]
 void InitFire (uint3 id : SV_DispatchThreadID) {
     float3 v = id;
+    if (id.y > 0) return;
 
-    if (id.y != 0) return;
+    //velocityTexRes[id]  = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 
     velocityTexRes[id.xyz] = float4(0.0, 1.0, 0.0, 0.0);
 }
 
 [numthreads(8,8,8)]
+void InitPressure (uint3 id : SV_DispatchThreadID) {
+    float3 v = id;
+    if (id.y > 0) return;
+
+    pressureTex[id.xyz] = 1.0;
+}
+
+
+
+[numthreads(8,8,8)]
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
-    if (id.y == 0)
+    if (id.y < 1)
+    {
+        velocityTexRes[id] = velocityTex[id];
         return;
+    }
     float3 cellVelocity = velocityTex[id.xyz].rgb;
 
     float3 pos = id - timeStep * cellVelocity;
     // pos = cellIndex2TexCoord(pos);
 
 
-    velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
+    // velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
+    velocityTexRes[id] = velocityTex[pos];
 
     /*
     // My own lerp
@@ -68,12 +84,7 @@ void Advection (uint3 id : SV_DispatchThreadID)
     int lzd = pos.z - lz; int hzd = hz - pos.z;
 
     velocityTexRes[id] = velocityTex[float3(lx, ly, lz)];
-    */
-
-
-
-
-    
+    */    
 }
 
 [numthreads(8,8,8)]
@@ -81,8 +92,24 @@ void Divergence (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
 
-    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    float4 fieldL = float4(0.0, 0.0, 0.0, 0.0);
+    float4 fieldR = float4(0.0, 0.0, 0.0, 0.0);
+    float4 fieldB = float4(0.0, 0.0, 0.0, 0.0);
+    float4 fieldT = float4(0.0, 0.0, 0.0, 0.0);
+    float4 fieldD = float4(0.0, 0.0, 0.0, 0.0);
+    float4 fieldU = float4(0.0, 0.0, 0.0, 0.0);
 
+    if (v.x > 0) fieldL = velocityTex[float3(v.x-1, v.y, v.z)];
+    if (v.y > 0) fieldB = velocityTex[float3(v.x, v.y-1, v.z)];
+    if (v.z > 0) fieldD = velocityTex[float3(v.x, v.y, v.z-1)];
+    if (v.x < size-1) fieldR = velocityTex[float3(v.x+1, v.y, v.z)];
+    if (v.y < size-1) fieldT = velocityTex[float3(v.x, v.y+1, v.z)];
+    if (v.z < size-1) fieldU = velocityTex[float3(v.x, v.y, v.z+1)];
+
+    float divergence = 0.5 * ((fieldR.x - fieldL.x) + (fieldT.y - fieldB.y) + (fieldU.z - fieldD.z));
+
+    divergenceTex[v] = divergence;
+    
 }
 
 [numthreads(8,8,8)]
@@ -90,6 +117,17 @@ void Jacobi (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
 
+    float dC = divergenceTex[v];
+    float pC = pressureTex[v];
+
+    float pL = (v.x > 0) ? pressureTex[float3(v.x-1, v.y, v.z)] : pC;
+    float pR = (v.x < size-1) ? pressureTex[float3(v.x+1, v.y, v.z)] : pC;
+    float pB = (v.y > 0) ? pressureTex[float3(v.x, v.y-1, v.z)] : pC;
+    float pT = (v.y < size-1) ? pressureTex[float3(v.x, v.y+1, v.z)] : pC;
+    float pD = (v.z > 0) ? pressureTex[float3(v.x, v.y, v.z-1)] : pC;
+    float pU = (v.z < size-1) ? pressureTex[float3(v.x, v.y, v.z+1)] : pC;
+
+    pressureTex[v] = (pL + pR + pB + pT + pU + pD - dC) /6.0;
 
 }
 
@@ -98,5 +136,54 @@ void Projection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
 
+    // TODO: case where id is in some object
 
+    float pC = pressureTex[v];
+    float pL = (v.x > 0) ? pressureTex[float3(v.x-1, v.y, v.z)] : pC;
+    float pR = (v.x < size-1) ? pressureTex[float3(v.x+1, v.y, v.z)] : pC;
+    float pB = (v.y > 0) ? pressureTex[float3(v.x, v.y-1, v.z)] : pC;
+    float pT = (v.y < size-1) ? pressureTex[float3(v.x, v.y+1, v.z)] : pC;
+    float pD = (v.z > 0) ? pressureTex[float3(v.x, v.y, v.z-1)] : pC;
+    float pU = (v.z < size-1) ? pressureTex[float3(v.x, v.y, v.z+1)] : pC;
+
+    float3 vL = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.LEFTCELL);
+    float3 vR = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.RIGHTCELL);
+    float3 vB = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.BOTTOMCELL);
+    float3 vT = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.TOPCELL);
+    float3 vD = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.DOWNCELL);
+    float3 vU = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.UPCELL);
+
+
+    float4 obstV = float4(0,0,0,0);
+    float4 vMask = float4(1,1,1,0);
+
+    if (v.x <= 0) {obstV.x = vL.x; vMask.x = 0; }
+    if (v.x >= size-1) {obstV.x = vR.x; vMask.x = 0; }
+    if (v.y <= 0) {obstV.y = vB.y; vMask.y = 0; }
+    if (v.y >= size-1) {obstV.y = vT.y; vMask.y = 0; }
+    if (v.z <= 0) {obstV.z = vD.z; vMask.z = 0; }
+    if (v.z >= size-1) {obstV.z = vU.z; vMask.z = 0; }
+
+    // Compute the gradient of pressure at the current cell by
+    // taking central differences of neighboring pressure values.
+    float4 gradP = 0.5*float4(pR - pL, pT - pB, pU - pD, 0.0);
+
+    // Project the velocity onto its divergence-free component by
+    // subtracting the gradient of pressure.
+    float4 vOld = velocityTex[v];
+    float4 vNew = vOld - gradP;
+
+    // Explicitly enforce the free-slip boundary condition by
+    // replacing the appropriate components of the new velocity with
+    // obstacle velocities.
+    vNew = (vMask * vNew) + obstV;
+
+    velocityTexRes[id] = vNew;
+    //if (pC == 0)
+    //    velocityTexRes[id] = float4(pC, pC, 1.0, 0);
+    //else{
+    //    velocityTexRes[id] = float4(0.0, max(1, pC*100), 0.0, 0);
+    //}
+
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }

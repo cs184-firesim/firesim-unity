@@ -112,7 +112,7 @@
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
-                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 0), 0);
+                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
                 // return col * transmittance;
 
             }
