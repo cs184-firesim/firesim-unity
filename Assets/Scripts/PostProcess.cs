@@ -83,8 +83,9 @@ public class PostProcess : MonoBehaviour
 		temp = velocityTex;
 		velocityTex = velocityTexRes;
 		velocityTexRes = temp;
-		// Find kernel 
-        int pressureHandle = fireComputeShader.FindKernel("InitPressure");
+		// Find kernel
+		int initHandle = fireComputeShader.FindKernel("InitFire");
+		int pressureHandle = fireComputeShader.FindKernel("InitPressure");
 		int advectionHandle = fireComputeShader.FindKernel("Advection");
 		int divergenceHandle = fireComputeShader.FindKernel("Divergence");
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
@@ -106,11 +107,16 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
 
 
+		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetTexture(initHandle, "densityTexRes", densityTexRes);
+		fireComputeShader.SetTexture(initHandle, "temperatureTexRes", temperatureTexRes);
+		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
+
 		// Calculate Buoyancy
 		fireComputeShader.SetTexture(buoyancyHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(buoyancyHandle, "temperatureTex", temperatureTexRes); // Hot Read
 		fireComputeShader.SetTexture(buoyancyHandle, "densityTex", densityTexRes); // Hot Read
-		fireComputeShader.Dispatch(buoyancyHandle, size / 8, size / 8, size / 8);
+	    fireComputeShader.Dispatch(buoyancyHandle, size / 8, size / 8, size / 8);
 
 		// Switch res
 		temp = velocityTex;
@@ -141,11 +147,11 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(pressureHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(pressureHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.SetTexture(pressureHandle, "pressureTexRes", pressureTexRes);
-		fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
+		//fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
 		// Switch res
-		temp = pressureTex;
-		pressureTex = pressureTexRes;
-		pressureTexRes = temp;
+		//temp = pressureTex;
+		//pressureTex = pressureTexRes;
+		//pressureTexRes = temp;
 		temp0 = temperatureTex;
 		temperatureTex = temperatureTexRes;
 		temperatureTexRes = temp0;
