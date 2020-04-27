@@ -94,7 +94,7 @@ void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
 
     float4 change = float4(0.0,  - KAPPA * density + SIGMA * (( 1.0 / T0 ) - ( 1.0 / temperature )) , 0.0, 0.0);
 
-    //velocityTexRes[v] += change;
+    velocityTexRes[v] += change * 0.00001;
 }
 
 
@@ -110,11 +110,11 @@ void Advection (uint3 id : SV_DispatchThreadID)
 
 
     // velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
-    velocityTexRes[id] = velocityTex[pos];
-    densityTexRes[id] = densityTex[pos];
-    temperatureTexRes[id] = temperatureTex[pos];
+    // velocityTexRes[id] = velocityTex[pos];
+    // densityTexRes[id] = densityTex[pos];
+    // temperatureTexRes[id] = temperatureTex[pos];
 
-    /*
+    
     // My own lerp
     // boundary conditions
 
@@ -140,8 +140,24 @@ void Advection (uint3 id : SV_DispatchThreadID)
         velocityTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
         velocityTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
 
-    */
-    
+    densityTexRes[id] = densityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+        densityTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
+        densityTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
+        densityTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
+        densityTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
+        densityTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
+        densityTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
+        densityTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
+
+    temperatureTexRes[id] = temperatureTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+        temperatureTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
+        temperatureTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
+        temperatureTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
+        temperatureTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
+        temperatureTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
+        temperatureTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
+        temperatureTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
+
 }
 
 [numthreads(8,8,8)]

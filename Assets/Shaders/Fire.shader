@@ -35,6 +35,8 @@
             SamplerState samplerNoise;
             Texture3D<float4> Velocity;
             SamplerState samplerVelocity;
+            Texture3D<float> Density;
+            SamplerState samplerDensity;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             // Container
             float3 boundsMin;
@@ -107,14 +109,19 @@
                 float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
                 float totalDensity = 0;
                 float distLimit = min(depth_linear - hit.x, hit.y);
+                float totalVelocity = 0;
                 while (dstTravelled < distLimit) {
                     float3 rayPos = origin + dir * (dstTravelled + hit.x);
-                    totalDensity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
+                    totalDensity += max(length(Density.SampleLevel(samplerDensity, rayPos, 0)), 0);
+                    totalVelocity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
+                float red = exp(-totalVelocity);
+                col = transmittance * col;
+                col.r = red;
                 // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
-                return col * transmittance;
+                return col;
 
             }
 
