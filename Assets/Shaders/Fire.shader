@@ -96,9 +96,9 @@
 
                 // Didn't hit
                 // Also this is a very crude solution for solving z-fighting
-                // if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
-                //     return col;
-                // }
+                if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
+                    return col;
+                }
 
                 // Hit
                 // Sample velocity
@@ -113,8 +113,8 @@
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
-                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 128), 0);
-                // return col * transmittance;
+                // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
+                return col * transmittance;
 
             }
 
