@@ -102,6 +102,7 @@
 
                 // Hit
                 // Sample velocity
+
                 float dstTravelled = 0;
                 float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
                 float totalDensity = 0;
@@ -112,7 +113,7 @@
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
-                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
+                return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 128), 0);
                 // return col * transmittance;
 
             }

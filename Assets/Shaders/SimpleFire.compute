@@ -7,17 +7,20 @@
 #pragma kernel Projection
 #pragma kernel InitPressure
 
+#include "SimpleNoise.compute"
+
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
 Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
-RWTexture3D<float> pressureTex;
+Texture3D<float> pressureTex;
+RWTexture3D<float> pressureTexRes;
 RWTexture3D<float> divergenceTex;
 int size;
 
 // timeStep of simulation
-float timeStep = 0.1;
+float timeStep = 1;
 // SamplerState samplervelocityTex;
 
 float3 cellIndex2TexCoord(float3 index)
@@ -41,9 +44,20 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
 [numthreads(8,8,8)]
 void InitPressure (uint3 id : SV_DispatchThreadID) {
     float3 v = id;
-    if (id.y > 0) return;
 
-    pressureTex[id.xyz] = 1.0;
+    // half sphere
+    float RADIUS = 32;
+    uint two = 2;
+    float half_size = size / two;
+    float dx = v.x - half_size;
+    float dy = v.y;
+    float dz = v.z - half_size;
+    float from_center = sqrt(dx * dx + dz * dz + dy * dy);
+
+    if (from_center > RADIUS + 1 || from_center < RADIUS - 1) return;
+    //if (v.y > 1) return;
+
+    pressureTexRes[id.xyz] = 1.0;
 }
 
 
@@ -52,11 +66,13 @@ void InitPressure (uint3 id : SV_DispatchThreadID) {
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
+/*
     if (id.y < 1)
     {
         velocityTexRes[id] = velocityTex[id];
         return;
     }
+*/
     float3 cellVelocity = velocityTex[id.xyz].rgb;
 
     float3 pos = id - timeStep * cellVelocity;
@@ -83,8 +99,17 @@ void Advection (uint3 id : SV_DispatchThreadID)
     int lyd = pos.y - ly; int hyd = hy - pos.y;
     int lzd = pos.z - lz; int hzd = hz - pos.z;
 
-    velocityTexRes[id] = velocityTex[float3(lx, ly, lz)];
-    */    
+    velocityTexRes[id] = velocityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+        velocityTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
+        velocityTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
+        velocityTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
+        velocityTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
+        velocityTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
+        velocityTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
+        velocityTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
+
+    */
+    
 }
 
 [numthreads(8,8,8)]
@@ -127,7 +152,7 @@ void Jacobi (uint3 id : SV_DispatchThreadID)
     float pD = (v.z > 0) ? pressureTex[float3(v.x, v.y, v.z-1)] : pC;
     float pU = (v.z < size-1) ? pressureTex[float3(v.x, v.y, v.z+1)] : pC;
 
-    pressureTex[v] = (pL + pR + pB + pT + pU + pD - dC) /6.0;
+    pressureTexRes[v] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
 
 }
 

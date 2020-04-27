@@ -20,7 +20,8 @@ public class PostProcess : MonoBehaviour
 	RenderTexture velocityTex;
 	RenderTexture velocityTexRes;
 	RenderTexture pressureTex;
-    RenderTexture divergenceTex;
+	RenderTexture pressureTexRes;
+	RenderTexture divergenceTex;
 
     // Ray marching
     public int marchSteps = 4;
@@ -68,7 +69,8 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref velocityTex, size, 4);
 		createTexture(ref velocityTexRes, size, 4);
 		createTexture(ref pressureTex, size, 1);
-        createTexture(ref divergenceTex, size, 1);
+		createTexture(ref pressureTexRes, size, 1);
+		createTexture(ref divergenceTex, size, 1);
 		// Switch res
 		RenderTexture temp;
 		temp = velocityTex;
@@ -84,7 +86,6 @@ public class PostProcess : MonoBehaviour
 		// static Input
 		foreach (int handle in new int[] {initHandle, pressureHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
 		{
-			fireComputeShader.SetTexture(handle, "pressureTex", pressureTex);
 			fireComputeShader.SetTexture(handle, "divergenceTex", divergenceTex);
 		}
 		fireComputeShader.SetInt("size", size);
@@ -110,10 +111,22 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.Dispatch(divergenceHandle, size / 8, size / 8, size / 8);
 		for (int itr = 0; itr < 20; itr++)
 		{
+			fireComputeShader.SetTexture(jacobiHandle, "pressureTex", pressureTex);
+			fireComputeShader.SetTexture(jacobiHandle, "pressureTexRes", pressureTexRes);
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
+			// Switch res
+			temp = pressureTex;
+			pressureTex = pressureTexRes;
+			pressureTexRes = temp;
 		}
+		fireComputeShader.SetTexture(pressureHandle, "pressureTexRes", pressureTexRes);
 		fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
+		// Switch res
+		temp = pressureTex;
+		pressureTex = pressureTexRes;
+		pressureTexRes = temp;
 
+		fireComputeShader.SetTexture(projectionHandle, "pressureTex", pressureTex);
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
 		// Output
 		material.SetTexture("Velocity", velocityTexRes);
