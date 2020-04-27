@@ -1,11 +1,12 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 
-#pragma kernel InitFire
 #pragma kernel Advection
 #pragma kernel Divergence
 #pragma kernel Jacobi
 #pragma kernel Projection
 #pragma kernel InitPressure
+#pragma kernel ApplyBuoyancy
+
 
 #include "SimpleNoise.compute"
 
@@ -16,11 +17,22 @@ Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
 Texture3D<float> pressureTex;
 RWTexture3D<float> pressureTexRes;
+Texture3D<float> temperatureTex;
+RWTexture3D<float> temperatureTexRes;
+Texture3D<float> densityTex;
+RWTexture3D<float> densityTexRes;
 RWTexture3D<float> divergenceTex;
 int size;
 
 // timeStep of simulation
 float timeStep = 1;
+
+// constants
+float SIGMA = 1.0;
+float KAPPA = 0.1;
+float T0 = 5.0;
+
+
 // SamplerState samplervelocityTex;
 
 float3 cellIndex2TexCoord(float3 index)
@@ -58,6 +70,24 @@ void InitPressure (uint3 id : SV_DispatchThreadID) {
     //if (v.y > 1) return;
 
     pressureTexRes[id.xyz] = 1.0;
+    temperatureTexRes[id.xyz] = 20.0;
+    densityTexRes[id.xyz] = 1.0;
+}
+
+
+[numthreads(8,8,8)]
+void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
+    float3 v = id;
+
+    float temperature = temperatureTex[v];
+    // do an offset by room temperature
+    temperature += T0;
+
+    float density = densityTex[v];
+
+    float4 change = float4(0.0,  - KAPPA * density + SIGMA * (( 1.0 / T0 ) - ( 1.0 / temperature )) , 0.0, 0.0);
+
+    //velocityTexRes[v] += change;
 }
 
 
@@ -66,13 +96,6 @@ void InitPressure (uint3 id : SV_DispatchThreadID) {
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
-/*
-    if (id.y < 1)
-    {
-        velocityTexRes[id] = velocityTex[id];
-        return;
-    }
-*/
     float3 cellVelocity = velocityTex[id.xyz].rgb;
 
     float3 pos = id - timeStep * cellVelocity;
@@ -81,6 +104,8 @@ void Advection (uint3 id : SV_DispatchThreadID)
 
     // velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
     velocityTexRes[id] = velocityTex[pos];
+    densityTexRes[id] = densityTex[pos];
+    temperatureTexRes[id] = temperatureTex[pos];
 
     /*
     // My own lerp
