@@ -50,7 +50,6 @@ public class PostProcess : MonoBehaviour
     }
 
 	private void updateNoise() {
-
         // If texture does not exist, create it
 		createTexture(ref renderTexture, size, 4);
         // Find kernel
@@ -132,6 +131,13 @@ public class PostProcess : MonoBehaviour
 		material.SetTexture("Velocity", velocityTexRes);
 	}
 
+	private void restartFire() {
+		velocityTex.Release();
+		velocityTexRes.Release();
+		pressureTex.Release();
+		divergenceTex.Release();
+	}
+
 	// Source: framebuffer after unity's pipeline
 	private void OnRenderImage(RenderTexture source, RenderTexture destination) {
         createMaterial(ref material, ref fireShader);
@@ -139,6 +145,7 @@ public class PostProcess : MonoBehaviour
 		material.SetInt ("marchSteps", marchSteps);
 		material.SetVector("boundsMin", container.position - container.localScale / 2);
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
+		updateFire();
 		// Render
 		Graphics.Blit(source, destination, material);
 	}
@@ -148,7 +155,10 @@ public class PostProcess : MonoBehaviour
         {
             print("Updating fire");
 			updateFire();
-        }
+        } else if (Input.GetKeyDown(KeyCode.R)) {
+			print("Clearing fire");
+			restartFire();
+		}
     }
 
 }
