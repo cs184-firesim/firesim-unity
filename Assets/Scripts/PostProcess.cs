@@ -22,6 +22,10 @@ public class PostProcess : MonoBehaviour
 	RenderTexture pressureTex;
 	RenderTexture pressureTexRes;
 	RenderTexture divergenceTex;
+	RenderTexture temperatureTex;
+	RenderTexture temperatureTexRes;
+	RenderTexture densityTex;
+	RenderTexture densityTexRes;
 
     // Ray marching
     public int marchSteps = 4;
@@ -69,37 +73,52 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref velocityTexRes, size, 4);
 		createTexture(ref pressureTex, size, 1);
 		createTexture(ref pressureTexRes, size, 1);
+		createTexture(ref densityTex, size, 1);
+		createTexture(ref densityTexRes, size, 1);
+		createTexture(ref temperatureTex, size, 1);
+		createTexture(ref temperatureTexRes, size, 1);
 		createTexture(ref divergenceTex, size, 1);
 		// Switch res
-		RenderTexture temp;
+		RenderTexture temp, temp0, temp1;
 		temp = velocityTex;
 		velocityTex = velocityTexRes;
 		velocityTexRes = temp;
-        // Find kernel 
-        int initHandle = fireComputeShader.FindKernel("InitFire");
+		// Find kernel 
         int pressureHandle = fireComputeShader.FindKernel("InitPressure");
 		int advectionHandle = fireComputeShader.FindKernel("Advection");
 		int divergenceHandle = fireComputeShader.FindKernel("Divergence");
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
 		int projectionHandle = fireComputeShader.FindKernel("Projection");
+        int buoyancyHandle = fireComputeShader.FindKernel("ApplyBuoyancy");
 		// static Input
-		foreach (int handle in new int[] {initHandle, pressureHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
+		foreach (int handle in new int[] { pressureHandle, advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
 		{
 			fireComputeShader.SetTexture(handle, "divergenceTex", divergenceTex);
 		}
 		fireComputeShader.SetInt("size", size);
-		// Calculate
-		fireComputeShader.SetTexture(initHandle, "velocityTex", velocityTexRes);
-		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTex);
+		// Calculate Advection
 		fireComputeShader.SetTexture(advectionHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(advectionHandle, "velocityTexRes", velocityTexRes);
-		// fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
+		fireComputeShader.SetTexture(advectionHandle, "temperatureTex", temperatureTex);
+		fireComputeShader.SetTexture(advectionHandle, "temperatureTexRes", temperatureTexRes);
+		fireComputeShader.SetTexture(advectionHandle, "densityTex", densityTex);
+		fireComputeShader.SetTexture(advectionHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
+
+
+		// Calculate Buoyancy
+		fireComputeShader.SetTexture(buoyancyHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetTexture(buoyancyHandle, "temperatureTex", temperatureTexRes); // Hot Read
+		fireComputeShader.SetTexture(buoyancyHandle, "densityTex", densityTexRes); // Hot Read
+		fireComputeShader.Dispatch(buoyancyHandle, size / 8, size / 8, size / 8);
+
 		// Switch res
 		temp = velocityTex;
 		velocityTex = velocityTexRes;
 		velocityTexRes = temp;
 
+
+		// Calculate divergence, jacobi, projection
 		fireComputeShader.SetTexture(divergenceHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(divergenceHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(jacobiHandle, "velocityTex", velocityTex);
@@ -118,12 +137,22 @@ public class PostProcess : MonoBehaviour
 			pressureTex = pressureTexRes;
 			pressureTexRes = temp;
 		}
+
+		fireComputeShader.SetTexture(pressureHandle, "densityTexRes", densityTexRes);
+		fireComputeShader.SetTexture(pressureHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.SetTexture(pressureHandle, "pressureTexRes", pressureTexRes);
 		fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
 		// Switch res
 		temp = pressureTex;
 		pressureTex = pressureTexRes;
 		pressureTexRes = temp;
+		temp0 = temperatureTex;
+		temperatureTex = temperatureTexRes;
+		temperatureTexRes = temp0;
+		temp1 = densityTex;
+		densityTex = densityTexRes;
+		densityTexRes = temp1;
+
 
 		fireComputeShader.SetTexture(projectionHandle, "pressureTex", pressureTex);
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
