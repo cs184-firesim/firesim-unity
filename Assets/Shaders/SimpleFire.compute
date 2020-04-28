@@ -14,13 +14,13 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
-Texture3D<float4> velocityTex;
+RWTexture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
-Texture3D<float> pressureTex;
+RWTexture3D<float> pressureTex;
 RWTexture3D<float> pressureTexRes;
-Texture3D<float> temperatureTex;
+RWTexture3D<float> temperatureTex;
 RWTexture3D<float> temperatureTexRes;
-Texture3D<float> densityTex;
+RWTexture3D<float> densityTex;
 RWTexture3D<float> densityTexRes;
 RWTexture3D<float> divergenceTex;
 int size;
@@ -44,11 +44,13 @@ float3 cellIndex2TexCoord(float3 index)
     (index.z+0.5) / size);
 }
 
+
 [numthreads(8,8,8)]
 void InitFire (uint3 id : SV_DispatchThreadID) {
     float3 v = id;
 
     // half sphere
+
     float RADIUS = 32;
     uint two = 2;
     float half_size = size / two;
@@ -56,11 +58,14 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
     float dy = v.y;
     float dz = v.z - half_size;
     float from_center = sqrt(dx * dx + dz * dz + dy * dy);
-    float4 dist_vec = float4(dx, dy, dz, 0);
+    float4 dist_vec = float4(0, 1, 0, 0);
 
     if (from_center > RADIUS) return;
     //velocityTexRes[id.xyz] = float4(0,1,0,0);
     velocityTexRes[id.xyz] = dist_vec * (RADIUS-from_center) / RADIUS ;
+    densityTexRes[id.xyz] = 1.0 * (RADIUS-from_center) / RADIUS ;
+    temperatureTexRes[id.xyz] = 20.0 * (RADIUS-from_center) / RADIUS ;
+    
     
 }
 
@@ -108,7 +113,11 @@ void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
 
     float4 change = float4(0.0, max(1,  - KAPPA * density + SIGMA * (( 1.0 / T0 ) - ( 1.0 / temperature ))) , 0.0, 0.0);
     
-    velocityTexRes[v] += float4(0,0.00001,0,0);
+    //velocityTexRes[v] += float4(0,0.00001,0,0);
+
+
+    // velocityTexRes[v] += change * 0.01;
+
 }
 
 
@@ -117,67 +126,75 @@ void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
-    float3 cellVelocity = velocityTex[id.xyz].rgb;
+    float3 cellVelocity = velocityTex[id].xyz;
 
-    float3 pos = id - timeStep * cellVelocity;
+    float3 pos = v - timeStep * cellVelocity;
+
+
     // pos = cellIndex2TexCoord(pos);
 
 
     // velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
-    //velocityTexRes[id] = velocityTex[pos];
-    //densityTexRes[id] = densityTex[pos];
-    //temperatureTexRes[id] = temperatureTex[pos];
+
+     //velocityTexRes[id] = velocityTex[pos];
+     //densityTexRes[id] = densityTex[pos];
+     //temperatureTexRes[id] = temperatureTex[pos];
+    //return;
 
     
     // My own lerp
     // boundary conditions
 
     pos.xyz = abs(pos.xyz);
-    if (pos.x > size) pos.x = 2 * size - pos.x;
-    if (pos.y > size) pos.y = 2 * size - pos.y;
-    if (pos.z > size) pos.z = 2 * size - pos.z;
+    if (pos.x > size - 1) pos.x = 2 * size - 2 - pos.x;
+    if (pos.y > size - 1) pos.y = 2 * size - 2 - pos.y;
+    if (pos.z > size - 1) pos.z = 2 * size - 2 - pos.z;
 
     // lerp
-    int lx = floor(pos.x); int hx = ceil(pos.x);
-    int ly = floor(pos.y); int hy = ceil(pos.y);
-    int lz = floor(pos.z); int hz = ceil(pos.z);
-    int lxd = pos.x - lx; int hxd = hx - pos.x;
-    int lyd = pos.y - ly; int hyd = hy - pos.y;
-    int lzd = pos.z - lz; int hzd = hz - pos.z;
+    uint lx = floor(pos.x); uint hx = ceil(pos.x);
+    uint ly = floor(pos.y); uint hy = ceil(pos.y);
+    uint lz = floor(pos.z); uint hz = ceil(pos.z);
+    float lxd = pos.x - lx; float hxd = hx - pos.x;
+    float lyd = pos.y - ly; float hyd = hy - pos.y;
+    float lzd = pos.z - lz; float hzd = hz - pos.z;
 
     velocityTexRes[id] = velocityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
-        velocityTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
-        velocityTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
-        velocityTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
-        velocityTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
-        velocityTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
-        velocityTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
-        velocityTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
+        velocityTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
+        velocityTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
+        velocityTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
+        velocityTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
+        velocityTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
+        velocityTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
+        velocityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
 
-    temperatureTexRes[id] = temperatureTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
-        temperatureTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
-        temperatureTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
-        temperatureTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
-        temperatureTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
-        temperatureTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
-        temperatureTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
-        temperatureTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
 
     densityTexRes[id] = densityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
-        densityTex[float3(hx, ly, lz)]*lxd*hyd*hzd +
-        densityTex[float3(lx, hy, lz)]*hxd*lyd*hzd +
-        densityTex[float3(hx, hy, lz)]*lxd*lyd*hzd +
-        densityTex[float3(lx, ly, hz)]*hxd*hyd*lzd +
-        densityTex[float3(hx, ly, hz)]*lxd*hyd*lzd +
-        densityTex[float3(lx, hy, hz)]*hxd*lyd*lzd +
-        densityTex[float3(hx, hy, hz)]*lxd*lyd*lzd;
-    
+        densityTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
+        densityTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
+        densityTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
+        densityTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
+        densityTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
+        densityTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
+        densityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
+
+    temperatureTexRes[id] = temperatureTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+        temperatureTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
+        temperatureTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
+        temperatureTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
+        temperatureTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
+        temperatureTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
+        temperatureTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
+        temperatureTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
+
+
+
 }
 
 [numthreads(8,8,8)]
 void Divergence (uint3 id : SV_DispatchThreadID)
 {
-    float3 v = id;
+    uint size_ = uint(size);
+    uint3 v = id;
 
     float4 fieldL = float4(0.0, 0.0, 0.0, 0.0);
     float4 fieldR = float4(0.0, 0.0, 0.0, 0.0);
@@ -186,35 +203,36 @@ void Divergence (uint3 id : SV_DispatchThreadID)
     float4 fieldD = float4(0.0, 0.0, 0.0, 0.0);
     float4 fieldU = float4(0.0, 0.0, 0.0, 0.0);
 
-    if (v.x > 0) fieldL = velocityTex[float3(v.x-1, v.y, v.z)];
-    if (v.y > 0) fieldB = velocityTex[float3(v.x, v.y-1, v.z)];
-    if (v.z > 0) fieldD = velocityTex[float3(v.x, v.y, v.z-1)];
-    if (v.x < size-1) fieldR = velocityTex[float3(v.x+1, v.y, v.z)];
-    if (v.y < size-1) fieldT = velocityTex[float3(v.x, v.y+1, v.z)];
-    if (v.z < size-1) fieldU = velocityTex[float3(v.x, v.y, v.z+1)];
+    if (v.x > 0) fieldL = velocityTex[uint3(v.x-1, v.y, v.z)];
+    if (v.y > 0) fieldB = velocityTex[uint3(v.x, v.y-1, v.z)];
+    if (v.z > 0) fieldD = velocityTex[uint3(v.x, v.y, v.z-1)];
+    if (v.x < size_-1) fieldR = velocityTex[uint3(v.x+1, v.y, v.z)];
+    if (v.y < size_-1) fieldT = velocityTex[uint3(v.x, v.y+1, v.z)];
+    if (v.z < size_-1) fieldU = velocityTex[uint3(v.x, v.y, v.z+1)];
 
     float divergence = 0.5 * ((fieldR.x - fieldL.x) + (fieldT.y - fieldB.y) + (fieldU.z - fieldD.z));
 
-    divergenceTex[v] = divergence;
+    divergenceTex[id] = divergence;
     
 }
 
 [numthreads(8,8,8)]
 void Jacobi (uint3 id : SV_DispatchThreadID)
 {
+    uint size_ = uint(size);
     float3 v = id;
 
-    float dC = divergenceTex[v];
-    float pC = pressureTex[v];
+    float dC = divergenceTex[id];
+    float pC = pressureTex[id];
 
-    float pL = (v.x > 0) ? pressureTex[float3(v.x-1, v.y, v.z)] : pC;
-    float pR = (v.x < size-1) ? pressureTex[float3(v.x+1, v.y, v.z)] : pC;
-    float pB = (v.y > 0) ? pressureTex[float3(v.x, v.y-1, v.z)] : pC;
-    float pT = (v.y < size-1) ? pressureTex[float3(v.x, v.y+1, v.z)] : pC;
-    float pD = (v.z > 0) ? pressureTex[float3(v.x, v.y, v.z-1)] : pC;
-    float pU = (v.z < size-1) ? pressureTex[float3(v.x, v.y, v.z+1)] : pC;
+    float pL = (id.x > 0) ? pressureTex[uint3(id.x-1, id.y, id.z)] : pC;
+    float pR = (id.x < size_-1) ? pressureTex[uint3(id.x+1, id.y, id.z)] : pC;
+    float pB = (id.y > 0) ? pressureTex[uint3(id.x, id.y-1, id.z)] : pC;
+    float pT = (id.y < size_-1) ? pressureTex[uint3(id.x, id.y+1, id.z)] : pC;
+    float pD = (id.z > 0) ? pressureTex[uint3(id.x, id.y, id.z-1)] : pC;
+    float pU = (id.z < size_-1) ? pressureTex[uint3(id.x, id.y, id.z+1)] : pC;
 
-    pressureTexRes[v] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
+    pressureTexRes[id] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
 
 }
 
@@ -222,16 +240,24 @@ void Jacobi (uint3 id : SV_DispatchThreadID)
 void Projection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
+    uint size_ = uint(size);
 
     // TODO: case where id is in some object
 
     float pC = pressureTex[v];
-    float pL = (v.x > 0) ? pressureTex[float3(v.x-1, v.y, v.z)] : pC;
-    float pR = (v.x < size-1) ? pressureTex[float3(v.x+1, v.y, v.z)] : pC;
-    float pB = (v.y > 0) ? pressureTex[float3(v.x, v.y-1, v.z)] : pC;
-    float pT = (v.y < size-1) ? pressureTex[float3(v.x, v.y+1, v.z)] : pC;
-    float pD = (v.z > 0) ? pressureTex[float3(v.x, v.y, v.z-1)] : pC;
-    float pU = (v.z < size-1) ? pressureTex[float3(v.x, v.y, v.z+1)] : pC;
+    float pL = (id.x > 0) ? pressureTex[float3(id.x-1, id.y, id.z)] : pC;
+    float pR = (id.x < size_-1) ? pressureTex[float3(id.x+1, id.y, id.z)] : pC;
+    float pB = (id.y > 0) ? pressureTex[float3(id.x, id.y-1, id.z)] : pC;
+    float pT = (id.y < size_-1) ? pressureTex[float3(id.x, id.y+1, id.z)] : pC;
+    float pD = (id.z > 0) ? pressureTex[float3(id.x, id.y, id.z-1)] : pC;
+    float pU = (id.z < size_-1) ? pressureTex[float3(id.x, id.y, id.z+1)] : pC;
+
+
+    float4 gradP = 0.5*float4(pR - pL, pT - pB, pU - pD, 0.0); float4 vOld = velocityTex[id]; float4 vNew = vOld - gradP; velocityTexRes[id] = vNew;
+
+    /*
+    
+
 
     float3 vL = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.LEFTCELL);
     float3 vR = float3(0.0, 0.0, 0.0); //GetObstacleVelocity(in.RIGHTCELL);
@@ -273,4 +299,12 @@ void Projection (uint3 id : SV_DispatchThreadID)
     //}
 
     //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+
+
+
+
+
+
+
+    */
 }

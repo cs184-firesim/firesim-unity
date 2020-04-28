@@ -83,9 +83,10 @@ public class PostProcess : MonoBehaviour
 		temp = velocityTex;
 		velocityTex = velocityTexRes;
 		velocityTexRes = temp;
+
 		// Find kernel
-		int initHandle = fireComputeShader.FindKernel("InitFire");
 		int pressureHandle = fireComputeShader.FindKernel("InitPressure");
+		int initHandle = fireComputeShader.FindKernel("InitFire");
 		int advectionHandle = fireComputeShader.FindKernel("Advection");
 		int divergenceHandle = fireComputeShader.FindKernel("Divergence");
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
@@ -105,18 +106,21 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(advectionHandle, "densityTex", densityTex);
 		fireComputeShader.SetTexture(advectionHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
 
 
 		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(initHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(initHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
 
 		// Calculate Buoyancy
 		fireComputeShader.SetTexture(buoyancyHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(buoyancyHandle, "temperatureTex", temperatureTexRes); // Hot Read
 		fireComputeShader.SetTexture(buoyancyHandle, "densityTex", densityTexRes); // Hot Read
 	    fireComputeShader.Dispatch(buoyancyHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
 
 		// Switch res
 		temp = velocityTex;
@@ -129,15 +133,15 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(divergenceHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(jacobiHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(jacobiHandle, "velocityTexRes", velocityTexRes);
-		fireComputeShader.SetTexture(projectionHandle, "velocityTex", velocityTex);
-		fireComputeShader.SetTexture(projectionHandle, "velocityTexRes", velocityTexRes);
 
 		fireComputeShader.Dispatch(divergenceHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
 		for (int itr = 0; itr < 20; itr++)
 		{
 			fireComputeShader.SetTexture(jacobiHandle, "pressureTex", pressureTex);
 			fireComputeShader.SetTexture(jacobiHandle, "pressureTexRes", pressureTexRes);
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
+			GL.Flush();
 			// Switch res
 			temp = pressureTex;
 			pressureTex = pressureTexRes;
@@ -147,11 +151,15 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(pressureHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(pressureHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.SetTexture(pressureHandle, "pressureTexRes", pressureTexRes);
+
 		//fireComputeShader.Dispatch(pressureHandle, size / 8, size / 8, size / 8);
-		// Switch res
+		//GL.Flush();
+
+		// TODO: write a swap helper function
 		//temp = pressureTex;
 		//pressureTex = pressureTexRes;
 		//pressureTexRes = temp;
+
 		temp0 = temperatureTex;
 		temperatureTex = temperatureTexRes;
 		temperatureTexRes = temp0;
@@ -160,17 +168,26 @@ public class PostProcess : MonoBehaviour
 		densityTexRes = temp1;
 
 
+		fireComputeShader.SetTexture(projectionHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(projectionHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(projectionHandle, "pressureTex", pressureTex);
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
 		// Output
 		material.SetTexture("Velocity", velocityTexRes);
+		material.SetTexture("Density", densityTex);
 	}
 
 	private void restartFire() {
 		velocityTex.Release();
 		velocityTexRes.Release();
+		densityTex.Release();
+		densityTexRes.Release();
+		temperatureTex.Release();
+		temperatureTexRes.Release();
 		pressureTex.Release();
 		divergenceTex.Release();
+
 	}
 
 	// Source: framebuffer after unity's pipeline
