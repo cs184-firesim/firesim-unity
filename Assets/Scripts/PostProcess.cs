@@ -26,6 +26,7 @@ public class PostProcess : MonoBehaviour
 	RenderTexture temperatureTexRes;
 	RenderTexture densityTex;
 	RenderTexture densityTexRes;
+	RenderTexture debugTex;
 
     // Ray marching
     public int marchSteps = 4;
@@ -78,6 +79,7 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref temperatureTex, size, 1);
 		createTexture(ref temperatureTexRes, size, 1);
 		createTexture(ref divergenceTex, size, 1);
+		createTexture(ref debugTex, size, 1);
 		// Switch res
 		RenderTexture temp, temp0, temp1;
 		temp = velocityTex;
@@ -100,6 +102,7 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetInt("size", size);
 		// Calculate Advection
 		fireComputeShader.SetTexture(advectionHandle, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(advectionHandle, "debugTex", debugTex);
 		fireComputeShader.SetTexture(advectionHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(advectionHandle, "temperatureTex", temperatureTex);
 		fireComputeShader.SetTexture(advectionHandle, "temperatureTexRes", temperatureTexRes);
@@ -176,6 +179,7 @@ public class PostProcess : MonoBehaviour
 		// Output
 		material.SetTexture("Velocity", velocityTexRes);
 		material.SetTexture("Density", densityTex);
+		material.SetTexture("Debug", debugTex);
 	}
 
 	private void restartFire() {

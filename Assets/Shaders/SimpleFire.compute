@@ -23,10 +23,11 @@ RWTexture3D<float> temperatureTexRes;
 RWTexture3D<float> densityTex;
 RWTexture3D<float> densityTexRes;
 RWTexture3D<float> divergenceTex;
+RWTexture3D<float> debugTex;
 int size;
 
 // timeStep of simulation
-float timeStep = 0.5;
+float timeStep = 2;
 
 // constants
 float SIGMA = 1.0;
@@ -51,19 +52,20 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
 
     // half sphere
 
-    float RADIUS = 32;
+    float RADIUS = 16;
     uint two = 2;
     float half_size = size / two;
     float dx = v.x - half_size;
     float dy = v.y;
     float dz = v.z - half_size;
     float from_center = sqrt(dx * dx + dz * dz + dy * dy);
+    // float4 dist_vec = float4(dx, dy, dz, 0);
     float4 dist_vec = float4(0, 1, 0, 0);
 
     if (from_center > RADIUS) return;
     //velocityTexRes[id.xyz] = float4(0,1,0,0);
-    velocityTexRes[id.xyz] = dist_vec * (RADIUS-from_center) / RADIUS ;
-    densityTexRes[id.xyz] = 1.0 * (RADIUS-from_center) / RADIUS ;
+    velocityTexRes[id.xyz] = dist_vec;
+    densityTexRes[id.xyz] = 1.0;
     temperatureTexRes[id.xyz] = 20.0 * (RADIUS-from_center) / RADIUS ;
     
     
@@ -120,16 +122,13 @@ void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
 
 }
 
-
-
 [numthreads(8,8,8)]
 void Advection (uint3 id : SV_DispatchThreadID)
 {
     float3 v = id;
     float3 cellVelocity = velocityTex[id].xyz;
 
-    float3 pos = v - timeStep * cellVelocity;
-
+    float3 pos = float3(32, 8, 32);
 
     // pos = cellIndex2TexCoord(pos);
 
@@ -158,7 +157,7 @@ void Advection (uint3 id : SV_DispatchThreadID)
     float lyd = pos.y - ly; float hyd = hy - pos.y;
     float lzd = pos.z - lz; float hzd = hz - pos.z;
 
-    velocityTexRes[id] = velocityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+    velocityTexRes[id] = velocityTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
         velocityTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
         velocityTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
         velocityTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
@@ -168,7 +167,7 @@ void Advection (uint3 id : SV_DispatchThreadID)
         velocityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
 
 
-    densityTexRes[id] = densityTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+    densityTexRes[id] = densityTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
         densityTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
         densityTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
         densityTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
@@ -177,7 +176,7 @@ void Advection (uint3 id : SV_DispatchThreadID)
         densityTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
         densityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
 
-    temperatureTexRes[id] = temperatureTex[float3(lx, ly, lz)]*hxd*hyd*hzd +
+    temperatureTexRes[id] = temperatureTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
         temperatureTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
         temperatureTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
         temperatureTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
@@ -186,8 +185,25 @@ void Advection (uint3 id : SV_DispatchThreadID)
         temperatureTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
         temperatureTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
 
+    if (
+        (densityTex[uint3(hx, ly, lz)] >= 0.0001 ||
+        densityTex[uint3(lx, ly, lz)] >= 0.0001 ||
+        densityTex[uint3(lx, hy, lz)] >= 0.0001 ||
+        densityTex[uint3(hx, hy, lz)] >= 0.0001 ||
+        densityTex[uint3(lx, ly, hz)] >= 0.0001 ||
+        densityTex[uint3(hx, ly, hz)] >= 0.0001 ||
+        densityTex[uint3(lx, hy, hz)] >= 0.0001 ||
+        densityTex[uint3(hx, hy, hz)] >= 0.0001) && densityTex[id] <= 0.0001 ) {
+        debugTex[id] = 1.0f;
+        // debugTex[uint3(hx, ly, lz)] = 1.0f;
+        // debugTex[uint3(lx, hy, lz)] = 1.0f;
+        // debugTex[uint3(hx, hy, lz)] = 1.0f;
+        // debugTex[uint3(lx, ly, hz)] = 1.0f;
+        // debugTex[uint3(hx, ly, hz)] = 1.0f;
+        // debugTex[uint3(lx, hy, hz)] = 1.0f;
+        // debugTex[uint3(hx, hy, hz)] = 1.0f;
 
-
+    }
 }
 
 [numthreads(8,8,8)]
