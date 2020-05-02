@@ -25,8 +25,11 @@ public class PostProcess : MonoBehaviour
 	RenderTexture divergenceTex;
 	RenderTexture temperatureTex;
 	RenderTexture temperatureTexRes;
+	RenderTexture vorticityTex;
 	RenderTexture densityTex;
 	RenderTexture densityTexRes;
+	RenderTexture fuelTex;
+	RenderTexture fuelTexRes;
 	RenderTexture debugTex;
 
     // Ray marching
@@ -81,9 +84,9 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref temperatureTex, size, 1);
 		createTexture(ref temperatureTexRes, size, 1);
 		createTexture(ref divergenceTex, size, 1);
+		createTexture(ref fuelTex, size, 1);
+		createTexture(ref fuelTexRes, size, 1);
 		createTexture(ref debugTex, size, 1);
-
-        
 
 		int handle = fireComputeShader.FindKernel("Everything");
 		if (stepc % 2 == 0)
@@ -141,7 +144,10 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref densityTexRes, size, 1);
 		createTexture(ref temperatureTex, size, 1);
 		createTexture(ref temperatureTexRes, size, 1);
+		createTexture(ref vorticityTex, size, 4);
 		createTexture(ref divergenceTex, size, 1);
+		createTexture(ref fuelTex, size, 1);
+		createTexture(ref fuelTexRes, size, 1);
 		createTexture(ref debugTex, size, 1);
 
 		// Find kernel
@@ -151,6 +157,9 @@ public class PostProcess : MonoBehaviour
 		int jacobiHandle = fireComputeShader.FindKernel("Jacobi");
 		int projectionHandle = fireComputeShader.FindKernel("Projection");
         int buoyancyHandle = fireComputeShader.FindKernel("ApplyBuoyancy");
+		int vorticityHandle = fireComputeShader.FindKernel("Vorticity");
+		int vorticityApplyHandle = fireComputeShader.FindKernel("ApplyVorticity");
+
 		// static Input
 		foreach (int handle in new int[] {advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
 		{
@@ -165,6 +174,8 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(advectionHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.SetTexture(advectionHandle, "densityTex", densityTex);
 		fireComputeShader.SetTexture(advectionHandle, "densityTexRes", densityTexRes);
+		fireComputeShader.SetTexture(advectionHandle, "fuelTex", fuelTex);
+		fireComputeShader.SetTexture(advectionHandle, "fuelTexRes", fuelTexRes);
 		fireComputeShader.SetFloat("timeStep", 0.8f);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
 		GL.Flush();
@@ -172,12 +183,13 @@ public class PostProcess : MonoBehaviour
 
         // Initialization
 		fireComputeShader.SetTexture(initHandle, "debugTex", debugTex);
-		
+		fireComputeShader.SetTexture(initHandle, "fuelTexRes", fuelTexRes);
 		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(initHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(initHandle, "temperatureTexRes", temperatureTexRes);
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
-		
+
+		swap(ref fuelTex, ref fuelTexRes);
 
 		// Calculate Buoyancy
 		fireComputeShader.SetTexture(buoyancyHandle, "debugTex", debugTex);
@@ -187,9 +199,21 @@ public class PostProcess : MonoBehaviour
 	    fireComputeShader.Dispatch(buoyancyHandle, size / 8, size / 8, size / 8);
 		GL.Flush();
 
+
+		// Calculate Vorticity
+		fireComputeShader.SetTexture(vorticityHandle, "debugTex", debugTex);
+		fireComputeShader.SetTexture(vorticityHandle, "vorticityTex", vorticityTex);
+		fireComputeShader.SetTexture(vorticityHandle, "velocityTex", velocityTexRes);
+		fireComputeShader.Dispatch(vorticityHandle, size / 8, size / 8, size / 8);
+
+		// Apply Vorticity
+		fireComputeShader.SetTexture(vorticityApplyHandle, "debugTex", debugTex);
+		fireComputeShader.SetTexture(vorticityApplyHandle, "vorticityTex", vorticityTex);
+		fireComputeShader.SetTexture(vorticityApplyHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.Dispatch(vorticityApplyHandle, size / 8, size / 8, size / 8);
+
 		// Switch res
 		swap(ref velocityTex, ref velocityTexRes);
-
 
 		// Calculate divergence, jacobi, projection
 		fireComputeShader.SetTexture(divergenceHandle, "debugTex", debugTex);
@@ -202,6 +226,7 @@ public class PostProcess : MonoBehaviour
 		GL.Flush();
 		for (int itr = 0; itr < 20; itr++)
 		{
+			fireComputeShader.SetTexture(jacobiHandle, "debugTex", debugTex);
 			fireComputeShader.SetTexture(jacobiHandle, "pressureTex", pressureTex);
 			fireComputeShader.SetTexture(jacobiHandle, "pressureTexRes", pressureTexRes);
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
@@ -223,7 +248,7 @@ public class PostProcess : MonoBehaviour
 		material.SetTexture("Velocity", velocityTex);
 		material.SetTexture("Density", densityTex);
 		material.SetTexture("Temperature", temperatureTex);
-		// material.SetTexture("Fuel", fuel);
+		material.SetTexture("Fuel", fuelTex);
 		material.SetTexture("Debug", debugTex);
 	}
 
