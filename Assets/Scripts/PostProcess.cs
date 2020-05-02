@@ -143,11 +143,6 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref temperatureTexRes, size, 1);
 		createTexture(ref divergenceTex, size, 1);
 		createTexture(ref debugTex, size, 1);
-		// Switch res
-		RenderTexture temp, temp0, temp1;
-		temp = velocityTex;
-		velocityTex = velocityTexRes;
-		velocityTexRes = temp;
 
 		// Find kernel
 		int initHandle = fireComputeShader.FindKernel("InitFire");
@@ -193,9 +188,7 @@ public class PostProcess : MonoBehaviour
 		GL.Flush();
 
 		// Switch res
-		temp = velocityTex;
-		velocityTex = velocityTexRes;
-		velocityTexRes = temp;
+		swap(ref velocityTex, ref velocityTexRes);
 
 
 		// Calculate divergence, jacobi, projection
@@ -213,29 +206,31 @@ public class PostProcess : MonoBehaviour
 			fireComputeShader.SetTexture(jacobiHandle, "pressureTexRes", pressureTexRes);
 			fireComputeShader.Dispatch(jacobiHandle, size / 8, size / 8, size / 8);
 			GL.Flush();
-			// Switch res
-			temp = pressureTex;
-			pressureTex = pressureTexRes;
-			pressureTexRes = temp;
+			swap(ref pressureTex, ref pressureTexRes);
 		}
 
-		temp0 = temperatureTex;
-		temperatureTex = temperatureTexRes;
-		temperatureTexRes = temp0;
-		temp1 = densityTex;
-		densityTex = densityTexRes;
-		densityTexRes = temp1;
-
+		swap(ref temperatureTex, ref temperatureTexRes);
+		swap(ref densityTex, ref densityTexRes);
 
 		fireComputeShader.SetTexture(projectionHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(projectionHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(projectionHandle, "pressureTex", pressureTex);
 		fireComputeShader.Dispatch(projectionHandle, size / 8, size / 8, size / 8);
 		GL.Flush();
+		swap(ref velocityTex, ref velocityTexRes);
+
 		// Output
-		material.SetTexture("Velocity", velocityTexRes);
+		material.SetTexture("Velocity", velocityTex);
 		material.SetTexture("Density", densityTex);
+		material.SetTexture("Temperature", temperatureTex);
 		material.SetTexture("Debug", debugTex);
+	}
+
+	private void swap(ref RenderTexture t1, ref RenderTexture t2) {
+		RenderTexture temp;
+		temp = t1;
+		t1 = t2;
+		t2 = temp;
 	}
 
 	private void restartFire() {
