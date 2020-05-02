@@ -14,13 +14,13 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
-Texture3D<float4> velocityTex;
+RWTexture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
-Texture3D<float> pressureTex;
+RWTexture3D<float> pressureTex;
 RWTexture3D<float> pressureTexRes;
-Texture3D<float> temperatureTex;
+RWTexture3D<float> temperatureTex;
 RWTexture3D<float> temperatureTexRes;
-Texture3D<float> densityTex;
+RWTexture3D<float> densityTex;
 RWTexture3D<float> densityTexRes;
 RWTexture3D<float> divergenceTex;
 RWTexture3D<float> debugTex;
@@ -352,6 +352,27 @@ void Projection (uint3 id : SV_DispatchThreadID)
 
 
     */
+}
+
+#pragma kernel Clear
+[numthreads(8,8,8)]
+void Clear (uint3 id : SV_DispatchThreadID) {
+    velocityTex[id] = float4(0, 0, 0, 0);
+    velocityTexRes[id] = float4(0, 0, 0, 0);
+    pressureTex[id] = 0;
+    pressureTexRes[id] = 0;
+    temperatureTex[id] = 0;
+    temperatureTexRes[id] = 0;
+    densityTex[id] = 0;
+    densityTexRes[id] = 0;
+
+}
+
+// Need a second kernel because only 8 writes are allowed per kernel
+#pragma kernel Clear2
+[numthreads(8,8,8)]
+void Clear2 (uint3 id : SV_DispatchThreadID) {
+    divergenceTex[id] = 0;
 }
 
 

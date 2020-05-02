@@ -109,7 +109,7 @@ public class PostProcess : MonoBehaviour
 		}
 		
 		fireComputeShader.SetTexture(handle, "debugTex", debugTex);
-		fireComputeShader.SetFloat("timeStep", 0.5f);
+		fireComputeShader.SetFloat("timeStep", 0.8f);
 		fireComputeShader.SetInt("size", size);
 
 
@@ -239,16 +239,19 @@ public class PostProcess : MonoBehaviour
 	}
 
 	private void restartFire() {
-		velocityTex.Release();
-		velocityTexRes.Release();
-		densityTex.Release();
-		densityTexRes.Release();
-		temperatureTex.Release();
-		temperatureTexRes.Release();
-		pressureTex.Release();
-		divergenceTex.Release();
-		debugTex.Release();
-
+		int clearKernel1 = fireComputeShader.FindKernel("Clear");
+		int clearKernel2 = fireComputeShader.FindKernel("Clear2");
+		fireComputeShader.SetTexture(clearKernel1, "velocityTex", velocityTex);
+		fireComputeShader.SetTexture(clearKernel1, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetTexture(clearKernel1, "temperatureTex", temperatureTex);
+		fireComputeShader.SetTexture(clearKernel1, "temperatureTexRes", temperatureTexRes);
+		fireComputeShader.SetTexture(clearKernel1, "densityTex", densityTex);
+		fireComputeShader.SetTexture(clearKernel1, "densityTexRes", densityTexRes);
+		fireComputeShader.SetTexture(clearKernel1, "pressureTex", pressureTex);
+		fireComputeShader.SetTexture(clearKernel1, "pressureTexRes", pressureTexRes);
+		fireComputeShader.SetTexture(clearKernel2, "divergenceTex", divergenceTex);
+		fireComputeShader.Dispatch(clearKernel1, size / 8, size / 8, size / 8);
+		fireComputeShader.Dispatch(clearKernel2, size / 8, size / 8, size / 8);
 	}
 
 	// Source: framebuffer after unity's pipeline
