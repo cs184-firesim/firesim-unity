@@ -121,11 +121,12 @@
                     dstTravelled += stepSize;
                 }
                 float transmittance = exp(-totalDensity);
-                // float red = exp(-totalDebug);
-                // col = transmittance * col;
-                if (totalDensity > 0.0001)
-                    col = float4(1, 1, 1, 0);
-                // col.r = totalDebug;
+                float red = exp(-totalVelocity);
+                col = transmittance * col;
+                col.r = red;
+               // if (totalDebug > 0.01)
+                //    col = float4(1, 1, 1, 0);
+                
                 // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
                 return col;
 

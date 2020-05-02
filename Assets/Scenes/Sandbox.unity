@@ -499,7 +499,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fireShader: {fileID: 4800000, guid: d4c17abcdbe566046b5879b697c17bc1, type: 3}
   container: {fileID: 560899886}
-  size: 256
+  size: 64
   scale: 50
   step_size: 0.001
   noiseShader: {fileID: 7200000, guid: 56e7ca782b4646c449edf0865e58437a, type: 3}
