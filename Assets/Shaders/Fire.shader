@@ -39,6 +39,8 @@
             SamplerState samplerDensity;
             Texture3D<float> Debug;
             SamplerState samplerDebug;
+            Texture3D<float> Temperature;
+            SamplerState samplerTemperature;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             // Container
             float3 boundsMin;

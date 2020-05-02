@@ -1,17 +1,4 @@
-﻿// Each #kernel tells which function to compile; you can have many kernels
-
-
-
-
-
-
-
-
-
-
-#include "SimpleNoise.compute"
-
-// Create a RenderTexture with enableRandomWrite flag and set it
+﻿// Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
 RWTexture3D<float4> velocityTex;
@@ -29,8 +16,6 @@ int size;
 // timeStep of simulation
 
 float timeStep;
-
-
 
 // SamplerState samplervelocityTex;
 
