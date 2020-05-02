@@ -223,6 +223,7 @@ public class PostProcess : MonoBehaviour
 		material.SetTexture("Velocity", velocityTex);
 		material.SetTexture("Density", densityTex);
 		material.SetTexture("Temperature", temperatureTex);
+		// material.SetTexture("Fuel", fuel);
 		material.SetTexture("Debug", debugTex);
 	}
 

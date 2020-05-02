@@ -41,6 +41,8 @@
             SamplerState samplerDebug;
             Texture3D<float> Temperature;
             SamplerState samplerTemperature;
+            Texture3D<float> Fuel;
+            SamplerState samplerFuel;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             // Container
             float3 boundsMin;
@@ -114,24 +116,21 @@
                 float totalDensity = 0;
                 float distLimit = min(depth_linear - hit.x, hit.y);
                 float totalVelocity = 0;
-                float totalDebug = 0;
                 while (dstTravelled < distLimit) {
                     float3 rayPos = origin + dir * (dstTravelled + hit.x);
                     totalDensity += max(Density.SampleLevel(samplerDensity, rayPos, 0), 0);
-                    totalDebug = max(Debug.SampleLevel(samplerDebug, rayPos, 0), totalDebug);
                     totalVelocity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
                     dstTravelled += stepSize;
                 }
-                float transmittance = exp(-totalDensity);
-                float red = exp(-totalVelocity);
-                col = transmittance * col;
-                col.r = red;
-               // if (totalDebug > 0.01)
+                // float transmittance = exp(-totalDensity);
+                // col = transmittance * col;
+                // float red = exp(-totalVelocity);
+                // col.r = red;
+                // if (totalDebug > 0.01)
                 //    col = float4(1, 1, 1, 0);
-                
                 // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
-                return col;
-
+                float strength = 1 - exp(-totalDensity*0.5);
+                return col + float4(1.0f, .72f, .15f, 0) * strength;
             }
 
             ENDCG
