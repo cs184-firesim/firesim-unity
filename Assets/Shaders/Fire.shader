@@ -114,21 +114,25 @@
                 float dstTravelled = 0;
                 float stepSize = distDelta / marchSteps;
                 float totalDensity = 0;
+                float totalDebug = 0;
+                float totalFuel = 0;
                 float totalVelocity = 0;
                 while (dstTravelled < distDelta) {
                     float3 rayPos = origin + dir * (dstTravelled + distToBox);
-                    float3 rayPosObject = (rayPos - boundsMin) / (boundsMax - boundsMin);
-                    totalDensity += max(Density.SampleLevel(samplerDensity, rayPosObject, 0) * distDelta, 0);
+                    totalDensity += max(Density.SampleLevel(samplerDensity, rayPos, 0), 0);
+                    totalFuel += max(Fuel.SampleLevel(samplerFuel, rayPos, 0), 0);
+                    totalDebug += max(Debug.SampleLevel(samplerDebug, rayPos, 0), 0);
+                    totalVelocity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
                     dstTravelled += stepSize;
                 }
-                // float transmittance = exp(-totalDensity);
-                // col = transmittance * col;
+                float transmittance = exp(-totalDensity);
+                col = transmittance * col;
                 // float red = exp(-totalVelocity);
                 // col.r = red;
-                // if (totalDebug > 0.01)
+                //if (totalDebug > 0.01)
                 //    col = float4(1, 1, 1, 0);
                 // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
-                float strength = 1 - exp(-totalDensity*0.5);
+                float strength = 1 - exp(-totalFuel*0.5);
                 return col + float4(1.0f, .72f, .15f, 0) * strength;
             }
 
