@@ -50,6 +50,15 @@
             float3 boundsMax;
             // Ray marching
             int marchSteps;
+            // Light
+            float3 lightDirection;
+            float4 lightColor;
+
+            float HenyeyGreenstein ( float3 inLightVector , float3 inViewVector, float inG )
+            {
+                float cosAngle = dot(normalize(inLightVector), normalize(inViewVector));
+                return (1-inG*inG)/(4*3.1415)/pow(1 + inG*inG - 2*inG*cosAngle, 3.0/2.0);
+            }
 
             // Ray box dst
             // https://github.com/SebLague/Clouds/blob/44e81a483504817e859d8e1b654a952f8a978a1a/Assets/Scripts/Clouds/Shaders/Clouds.shader
@@ -114,26 +123,31 @@
                 float dstTravelled = 0;
                 float stepSize = distDelta / marchSteps;
                 float totalDensity = 0;
-                float totalDebug = 0;
+                float totalEnergy = 0; // Light contribution from the sun
                 float totalFuel = 0;
-                float totalVelocity = 0;
                 while (dstTravelled < distDelta) {
                     float3 rayPos = origin + dir * (dstTravelled + distToBox);
-                    totalDensity += max(Density.SampleLevel(samplerDensity, rayPos, 0), 0);
-                    totalFuel += max(Fuel.SampleLevel(samplerFuel, rayPos, 0), 0);
-                    totalDebug += max(Debug.SampleLevel(samplerDebug, rayPos, 0), 0);
-                    totalVelocity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
+                    float3 rayPosObject = (rayPos - boundsMin) / (boundsMax - boundsMin);
+                    float d = max(Density.SampleLevel(samplerDensity, rayPosObject, 0) * distDelta, 0);
+                    totalDensity += d;
+                    totalEnergy += 2.0 * exp(-d) * (1-exp(-3*d)) * HenyeyGreenstein(lightDirection, dir, 0.05);
+                    totalFuel += max(Fuel.SampleLevel(samplerFuel, rayPosObject, 0) * distDelta, 0);
                     dstTravelled += stepSize;
                 }
-                float transmittance = exp(-totalDensity);
-                col = transmittance * col;
+                float transmittance = min(1, exp(-totalDensity) + 0);
+                float4 smokeColor = float4(.5, .5, .5, 0);
+                lightColor = float4(lightColor.rgb, 0);
+                totalEnergy = exp(-totalEnergy);
+                float lightColorContribution = 0.2;
+                smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
+                // col = transmittance * col;
                 // float red = exp(-totalVelocity);
                 // col.r = red;
                 //if (totalDebug > 0.01)
                 //    col = float4(1, 1, 1, 0);
                 // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
-                float strength = 1 - exp(-totalFuel*0.5);
-                return col + float4(1.0f, .72f, .15f, 0) * strength;
+                // float strength = 1 - exp(-totalFuel*0.5);
+                return col*transmittance + (1-transmittance) * totalEnergy * smokeColor;
             }
 
             ENDCG

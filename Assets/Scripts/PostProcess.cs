@@ -9,6 +9,9 @@ public class PostProcess : MonoBehaviour
 	Material material; // Material for fireShader
 	public Transform container; // Container for our fire
 
+	// Light
+	public Light sun;
+
 	// Noise
 	public int size = 256; // As of now, needs to be a mutliple of 8
 	public float scale = 50; // TODO: Use this value
@@ -282,6 +285,8 @@ public class PostProcess : MonoBehaviour
 		material.SetInt ("marchSteps", marchSteps);
 		material.SetVector("boundsMin", container.position - container.localScale / 2);
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
+		material.SetVector("lightDirection", sun.transform.forward);
+		material.SetVector("lightColor", sun.color);
 		//updateEverything();
 		updateFire();
 		// Render
@@ -297,6 +302,9 @@ public class PostProcess : MonoBehaviour
 		} else if (Input.GetKeyDown(KeyCode.R)) {
 			print("Clearing fire");
 			restartFire();
+		} else if (Input.GetKeyDown(KeyCode.E)) { // Trigger debug info print
+			print(sun.transform.forward);
+			print(sun.color);
 		}
     }
 
