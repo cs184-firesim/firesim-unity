@@ -100,6 +100,21 @@
                 return o;
             }
 
+            float4 flameColor(float strength) {
+                float4 yellow = float4(1.0f, .72f, .15f, 0);
+                float4 blue = float4(.141f, .651f, .98f, 0);
+                // Defualt
+                // return yellow * strength;
+                // Experimental
+                if (strength < 0.9) {
+                    return yellow * strength;
+                } else if (strength < 0.95) {
+                    return lerp(yellow, blue, (strength - 0.9) * 20);
+                } else {
+                    return blue * (1 - (strength - 0.95) * 20);
+                }
+            }
+
             fixed4 frag(v2f i) : SV_Target {
                 // Sample the source frame buffer
                 fixed4 col = tex2D(_MainTex, i.uv);
@@ -142,10 +157,9 @@
                 float lightColorContribution = 0.2;
                 smokeColor = lerp(smokeColor, lightColor, lightColorContribution);
                 // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
-                float4 flameColor = float4(1.0f, .72f, .15f, 0); // TODO: replace with a more sophisticated gradient
-                float strength = (1 - exp(-totalFuel));
+                float strength = (1 - exp(-totalFuel*5));
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
-                return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor * strength;
+                return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength);
             }
 
             ENDCG
