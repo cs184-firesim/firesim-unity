@@ -140,11 +140,12 @@
                 float4 smokeColor = float4(.5, .5, .5, 0);
                 lightColor = float4(lightColor.rgb, 0);
                 float lightColorContribution = 0.2;
-                smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
+                smokeColor = lerp(smokeColor, lightColor, lightColorContribution);
+                // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
                 float4 flameColor = float4(1.0f, .72f, .15f, 0); // TODO: replace with a more sophisticated gradient
-                float strength = (1 - exp(-totalFuel)) * 0.9;
+                float strength = (1 - exp(-totalFuel));
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
-                return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + flameColor * strength;
+                return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor * strength;
             }
 
             ENDCG
