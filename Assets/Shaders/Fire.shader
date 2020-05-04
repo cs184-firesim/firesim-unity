@@ -135,19 +135,16 @@
                     dstTravelled += stepSize;
                 }
                 float transmittance = min(1, exp(-totalDensity) + 0);
+                totalEnergy = exp(-totalEnergy);
+
                 float4 smokeColor = float4(.5, .5, .5, 0);
                 lightColor = float4(lightColor.rgb, 0);
-                totalEnergy = exp(-totalEnergy);
                 float lightColorContribution = 0.2;
                 smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
-                // col = transmittance * col;
-                // float red = exp(-totalVelocity);
-                // col.r = red;
-                //if (totalDebug > 0.01)
-                //    col = float4(1, 1, 1, 0);
-                // return Velocity.SampleLevel(samplerVelocity, float3(i.uv, 5), 0);
-                // float strength = 1 - exp(-totalFuel*0.5);
-                return col*transmittance + (1-transmittance) * totalEnergy * smokeColor;
+                float4 flameColor = float4(1.0f, .72f, .15f, 0); // TODO: replace with a more sophisticated gradient
+                float strength = (1 - exp(-totalFuel)) * 0.9;
+                // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
+                return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + flameColor * strength;
             }
 
             ENDCG
