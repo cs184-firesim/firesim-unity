@@ -103,15 +103,17 @@
             float4 flameColor(float strength) {
                 float4 yellow = float4(1.0f, .72f, .15f, 0);
                 float4 blue = float4(.141f, .651f, .98f, 0);
+                float4 red = float4(.71f, .17f, .11f, 0);
+                float4 orangeRed = float4(1, .635f, .365f, 0) * 0.7;
                 // Defualt
                 // return yellow * strength;
                 // Experimental
                 if (strength < 0.9) {
                     return yellow * strength;
                 } else if (strength < 0.95) {
-                    return lerp(yellow, blue, (strength - 0.9) * 20);
+                    return lerp(yellow, orangeRed, (strength - 0.9) * 20);
                 } else {
-                    return blue * (1 - (strength - 0.95) * 20);
+                    return orangeRed * (1 - (strength - 0.95) * 20);
                 }
             }
 
@@ -157,7 +159,7 @@
                 float lightColorContribution = 0.2;
                 smokeColor = lerp(smokeColor, lightColor, lightColorContribution);
                 // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
-                float strength = (1 - exp(-totalFuel*5));
+                float strength = exp(-totalFuel*0.03);
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
                 return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength);
             }
