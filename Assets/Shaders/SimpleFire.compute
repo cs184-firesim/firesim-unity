@@ -1,17 +1,21 @@
 ﻿// Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
-RWTexture3D<float4> velocityTex;
+Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
-RWTexture3D<float> pressureTex;
+Texture3D<float> pressureTex;
 RWTexture3D<float> pressureTexRes;
-RWTexture3D<float> temperatureTex;
+Texture3D<float> temperatureTex;
 RWTexture3D<float> temperatureTexRes;
-RWTexture3D<float> densityTex;
+Texture3D<float> densityTex;
 RWTexture3D<float> densityTexRes;
+Texture3D<float> fuelTex;
+RWTexture3D<float> fuelTexRes;
 RWTexture3D<float> divergenceTex;
+RWTexture3D<float4> vorticityTex;
 RWTexture3D<float> debugTex;
 int size;
+
 
 // timeStep of simulation
 
@@ -56,6 +60,7 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
     //velocityTexRes[id.xyz] = dist_vec;
     densityTexRes[id] = 1.0;
     temperatureTexRes[id] = 10.0 + from_center;
+    fuelTexRes[id] = 1.0;
     
     //if (velocityTexRes[id].y > 0.5) debugTex[id] = 1.0f;
 
@@ -92,17 +97,10 @@ void Advection (uint3 id : SV_DispatchThreadID)
     float3 v = id;
     float3 cellVelocity = velocityTex[id].xyz;
 
-    
     float3 pos = v - cellVelocity * timeStep;
 
-
-    // pos = cellIndex2TexCoord(pos);
-    
-    // if (velocityTex[id].x > 0.1) debugTex[id] = 1.0f;
-    // velocityTexRes[id] = velocityTex.SampleLevel(samplervelocityTex, pos, 0);
-
-
     float eps = 0.00001;
+    float FUEL_EPS = 0.005;
 
     // My own lerp
     // boundary conditions
@@ -129,7 +127,21 @@ void Advection (uint3 id : SV_DispatchThreadID)
         velocityTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
         velocityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd;
 
+    // Also, simulate the combustion here. Consider spliting into two kernels
 
+    float fuel_level = (fuelTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
+        fuelTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
+        fuelTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
+        fuelTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
+        fuelTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
+        fuelTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
+        fuelTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
+        fuelTex[uint3(hx, hy, hz)]*lxd*lyd*lzd);
+
+
+    fuelTexRes[id] = max(0.0f, fuel_level - FUEL_EPS);
+
+    float combusted_fuel = fuel_level - max(0.0f, fuel_level - FUEL_EPS);
 
     densityTexRes[id] = 0.99*(densityTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
         densityTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
@@ -138,39 +150,20 @@ void Advection (uint3 id : SV_DispatchThreadID)
         densityTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
         densityTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
         densityTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
-        densityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd);
+        densityTex[uint3(hx, hy, hz)]*lxd*lyd*lzd) + 0.05 * combusted_fuel;
 
 
-    temperatureTexRes[id] = (temperatureTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
+    temperatureTexRes[id] = 0.99*(temperatureTex[uint3(lx, ly, lz)]*hxd*hyd*hzd +
         temperatureTex[uint3(hx, ly, lz)]*lxd*hyd*hzd +
         temperatureTex[uint3(lx, hy, lz)]*hxd*lyd*hzd +
         temperatureTex[uint3(hx, hy, lz)]*lxd*lyd*hzd +
         temperatureTex[uint3(lx, ly, hz)]*hxd*hyd*lzd +
         temperatureTex[uint3(hx, ly, hz)]*lxd*hyd*lzd +
         temperatureTex[uint3(lx, hy, hz)]*hxd*lyd*lzd +
-        temperatureTex[uint3(hx, hy, hz)]*lxd*lyd*lzd);
+        temperatureTex[uint3(hx, hy, hz)]*lxd*lyd*lzd)+combusted_fuel;
 
-/*
-    if (
-        (densityTex[uint3(hx, ly, lz)] >= 0.01 ||
-        densityTex[uint3(lx, ly, lz)] >= 0.01 ||
-        densityTex[uint3(lx, hy, lz)] >= 0.01 ||
-        densityTex[uint3(hx, hy, lz)] >= 0.01 ||
-        densityTex[uint3(lx, ly, hz)] >= 0.01 ||
-        densityTex[uint3(hx, ly, hz)] >= 0.01 ||
-        densityTex[uint3(lx, hy, hz)] >= 0.01 ||
-        densityTex[uint3(hx, hy, hz)] >= 0.01) && densityTex[id] <= 0.0001 ) {
-        debugTex[id] = 1.0f;
-        // debugTex[uint3(hx, ly, lz)] = 1.0f;
-        // debugTex[uint3(lx, hy, lz)] = 1.0f;
-        // debugTex[uint3(hx, hy, lz)] = 1.0f;
-        // debugTex[uint3(lx, ly, hz)] = 1.0f;
-        // debugTex[uint3(hx, ly, hz)] = 1.0f;
-        // debugTex[uint3(lx, hy, hz)] = 1.0f;
-        // debugTex[uint3(hx, hy, hz)] = 1.0f;
 
-    }
-       */
+
 }
 
 #pragma kernel Divergence
@@ -178,12 +171,9 @@ void Advection (uint3 id : SV_DispatchThreadID)
 [numthreads(8,8,8)]
 void Divergence (uint3 id : SV_DispatchThreadID)
 {
-    uint size_ = uint(size);
+
     uint3 v = id;
-
-
-
-    
+    uint size_ = uint(size);
 
     float4 fieldL = float4(0.0, 0.0, 0.0, 0.0);
     float4 fieldR = float4(0.0, 0.0, 0.0, 0.0);
@@ -202,7 +192,74 @@ void Divergence (uint3 id : SV_DispatchThreadID)
     float divergence = 0.5 * ((fieldR.x - fieldL.x) + (fieldT.y - fieldB.y) + (fieldU.z - fieldD.z));
 
     divergenceTex[id] = divergence;
-    
+}
+
+#pragma kernel Vorticity
+
+[numthreads(8,8,8)]
+void Vorticity (uint3 id : SV_DispatchThreadID)
+{
+    uint3 v = id;
+    uint size_ = uint(size);  
+
+    float L = 0.0;
+    float R = 0.0;
+    float B = 0.0;
+    float T = 0.0;
+    float D = 0.0;
+    float U = 0.0;
+
+    if (v.x > 0) L = velocityTex[uint3(v.x-1, v.y, v.z)].x;
+    if (v.y > 0) B = velocityTex[uint3(v.x, v.y-1, v.z)].y;
+    if (v.z > 0) D = velocityTex[uint3(v.x, v.y, v.z-1)].z;
+    if (v.x < size_-1) R = velocityTex[uint3(v.x+1, v.y, v.z)].x;
+    if (v.y < size_-1) T = velocityTex[uint3(v.x, v.y+1, v.z)].y;
+    if (v.z < size_-1) U = velocityTex[uint3(v.x, v.y, v.z+1)].z;
+
+
+    float4 vorticity = 0.5 * float4
+    (
+    (T-B)-(U-D),
+    (U-D)-(R-L),
+    (R-L)-(T-B),
+    0.0
+    );
+
+    vorticityTex[id] = vorticity;
+}
+
+#pragma kernel ApplyVorticity
+
+[numthreads(8,8,8)]
+void ApplyVorticity (uint3 id : SV_DispatchThreadID)
+{
+    uint3 v = id;
+    uint size_ = uint(size);
+    float STRENGTH = 0.2f;
+
+    float omegaL = 0.0;
+    float omegaR = 0.0;
+    float omegaB = 0.0;
+    float omegaT = 0.0;
+    float omegaD = 0.0;
+    float omegaU = 0.0;
+
+    if (v.x > 0) omegaL = length(vorticityTex[uint3(v.x-1, v.y, v.z)]);
+    if (v.y > 0) omegaB = length(vorticityTex[uint3(v.x, v.y-1, v.z)]);
+    if (v.z > 0) omegaD = length(vorticityTex[uint3(v.x, v.y, v.z-1)]);
+    if (v.x < size_-1) omegaR = length(vorticityTex[uint3(v.x+1, v.y, v.z)]);
+    if (v.y < size_-1) omegaT = length(vorticityTex[uint3(v.x, v.y+1, v.z)]);
+    if (v.z < size_-1) omegaU = length(vorticityTex[uint3(v.x, v.y, v.z+1)]);
+
+    float3 omega = vorticityTex[id].xyz;
+
+    float3 eta = 0.5 * float3(omegaR - omegaL, omegaT - omegaB, omegaU - omegaD);
+
+    eta = normalize(eta + float3(0.001 ,0.001, 0.001));
+
+    float3 change = timeStep * STRENGTH * cross(eta, omega);
+
+    velocityTexRes[id] += float4(change, 0);
 }
 
 #pragma kernel Jacobi
@@ -216,6 +273,7 @@ void Jacobi (uint3 id : SV_DispatchThreadID)
     float dC = divergenceTex[id];
     float pC = pressureTex[id];
 
+
     float pL = (id.x > 0) ? pressureTex[uint3(id.x-1, id.y, id.z)] : pC;
     float pR = (id.x < size_-1) ? pressureTex[uint3(id.x+1, id.y, id.z)] : pC;
     float pB = (id.y > 0) ? pressureTex[uint3(id.x, id.y-1, id.z)] : pC;
@@ -226,42 +284,6 @@ void Jacobi (uint3 id : SV_DispatchThreadID)
     pressureTexRes[id] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
 
 }
-
-/*
-void JacobiFunc (uint3 id : SV_DispatchThreadID, int i)
-{
-    uint size_ = uint(size);
-
-    float dC = divergenceTex[id];
-    
-
-    if (i %2 == 0) {
-        float pC = pressureTex[id];
-        float pL = (id.x > 0) ? pressureTex[uint3(id.x-1, id.y, id.z)] : pC;
-        float pR = (id.x < size_-1) ? pressureTex[uint3(id.x+1, id.y, id.z)] : pC;
-        float pB = (id.y > 0) ? pressureTex[uint3(id.x, id.y-1, id.z)] : pC;
-        float pT = (id.y < size_-1) ? pressureTex[uint3(id.x, id.y+1, id.z)] : pC;
-        float pD = (id.z > 0) ? pressureTex[uint3(id.x, id.y, id.z-1)] : pC;
-        float pU = (id.z < size_-1) ? pressureTex[uint3(id.x, id.y, id.z+1)] : pC;
-
-        pressureTexRes[id] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
-    }
-    else {
-        float pC = pressureTexRes[id];
-        float pL = (id.x > 0) ? pressureTexRes[uint3(id.x-1, id.y, id.z)] : pC;
-        float pR = (id.x < size_-1) ? pressureTexRes[uint3(id.x+1, id.y, id.z)] : pC;
-        float pB = (id.y > 0) ? pressureTexRes[uint3(id.x, id.y-1, id.z)] : pC;
-        float pT = (id.y < size_-1) ? pressureTexRes[uint3(id.x, id.y+1, id.z)] : pC;
-        float pD = (id.z > 0) ? pressureTexRes[uint3(id.x, id.y, id.z-1)] : pC;
-        float pU = (id.z < size_-1) ? pressureTexRes[uint3(id.x, id.y, id.z+1)] : pC;
-
-        pressureTex[id] = (pL + pR + pB + pT + pU + pD - dC)/6.0;
-
-
-    }
-
-}
-*/
 
 
 #pragma kernel Projection
@@ -342,13 +364,13 @@ void Projection (uint3 id : SV_DispatchThreadID)
 #pragma kernel Clear
 [numthreads(8,8,8)]
 void Clear (uint3 id : SV_DispatchThreadID) {
-    velocityTex[id] = float4(0, 0, 0, 0);
+    //velocityTex[id] = float4(0, 0, 0, 0);
     velocityTexRes[id] = float4(0, 0, 0, 0);
-    pressureTex[id] = 0;
+    //pressureTex[id] = 0;
     pressureTexRes[id] = 0;
-    temperatureTex[id] = 0;
+    //temperatureTex[id] = 0;
     temperatureTexRes[id] = 0;
-    densityTex[id] = 0;
+    //densityTex[id] = 0;
     densityTexRes[id] = 0;
 
 }
