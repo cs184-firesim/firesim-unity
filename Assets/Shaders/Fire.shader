@@ -11,6 +11,7 @@
         Pass
         {
             CGPROGRAM
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex vert
             #pragma fragment frag
 
@@ -53,10 +54,10 @@
             // Ray box dst
             // https://github.com/SebLague/Clouds/blob/44e81a483504817e859d8e1b654a952f8a978a1a/Assets/Scripts/Clouds/Shaders/Clouds.shader
             // Returns (dstToBox, dstInsideBox). If ray misses box, dstInsideBox will be zero
-            float2 rayBoxDst(float3 boundsMin, float3 boundsMax, float3 rayOrigin, float3 invRaydir) {
+            float2 rayBoxDst(float3 boundsMin, float3 boundsMax, float3 rayOrigin, float3 dir) {
                 // Adapted from: http://jcgt.org/published/0007/03/04/
-                float3 t0 = (boundsMin - rayOrigin) / invRaydir;
-                float3 t1 = (boundsMax - rayOrigin) / invRaydir;
+                float3 t0 = (boundsMin - rayOrigin) / dir;
+                float3 t1 = (boundsMax - rayOrigin) / dir;
                 float3 tmin = min(t0, t1);
                 float3 tmax = max(t0, t1);
                 
@@ -101,25 +102,23 @@
                 float3 dir = normalize(i.viewVector);
                 // Test intersection
                 float2 hit = rayBoxDst(boundsMin, boundsMax, origin, dir);
-
+                float distToBox = hit.x;
+                float distDelta = hit.y; // Delta t inside the box starting from distToBox
                 // Didn't hit
                 // Also this is a very crude solution for solving z-fighting
-                if (hit.y <= 0 || hit.x > depth_linear + 0.001) {
+                if (distDelta <= 0 || distToBox > depth_linear + 0.001) {
                     return col;
                 }
 
                 // Hit
-                // Sample velocity
-
                 float dstTravelled = 0;
-                float stepSize = hit.y / marchSteps; //(hit.y - hit.x) / marchSteps;
+                float stepSize = distDelta / marchSteps;
                 float totalDensity = 0;
-                float distLimit = min(depth_linear - hit.x, hit.y);
                 float totalVelocity = 0;
-                while (dstTravelled < distLimit) {
-                    float3 rayPos = origin + dir * (dstTravelled + hit.x);
-                    totalDensity += max(Density.SampleLevel(samplerDensity, rayPos, 0), 0);
-                    totalVelocity += max(length(Velocity.SampleLevel(samplerVelocity, rayPos, 0)), 0);
+                while (dstTravelled < distDelta) {
+                    float3 rayPos = origin + dir * (dstTravelled + distToBox);
+                    float3 rayPosObject = (rayPos - boundsMin) / (boundsMax - boundsMin);
+                    totalDensity += max(Density.SampleLevel(samplerDensity, rayPosObject, 0) * distDelta, 0);
                     dstTravelled += stepSize;
                 }
                 // float transmittance = exp(-totalDensity);

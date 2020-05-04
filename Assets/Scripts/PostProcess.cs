@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// [ExecuteInEditMode, ImageEffectAllowedInSceneView]
+[ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class PostProcess : MonoBehaviour
 {
 	public Shader fireShader; // Input fire voxels, output a render of the fire
