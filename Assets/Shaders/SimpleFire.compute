@@ -20,6 +20,7 @@ int size;
 // timeStep of simulation
 
 float timeStep;
+float vorticityStrength;
 
 // SamplerState samplervelocityTex;
 
@@ -235,7 +236,6 @@ void ApplyVorticity (uint3 id : SV_DispatchThreadID)
 {
     uint3 v = id;
     uint size_ = uint(size);
-    float STRENGTH = 0.5f;
 
     float omegaL = 0.0;
     float omegaR = 0.0;
@@ -257,7 +257,7 @@ void ApplyVorticity (uint3 id : SV_DispatchThreadID)
 
     eta = normalize(eta + float3(0.001 ,0.001, 0.001));
 
-    float3 change = timeStep * STRENGTH * cross(eta, omega);
+    float3 change = timeStep * vorticityStrength * cross(eta, omega);
 
     velocityTexRes[id] += float4(change, 0);
 }

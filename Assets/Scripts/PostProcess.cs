@@ -14,8 +14,9 @@ public class PostProcess : MonoBehaviour
 
 	// Noise
 	public int size = 256; // As of now, needs to be a mutliple of 8
-	public float scale = 50; // TODO: Use this value
-    public float step_size = 0.00001f; // TODO: Use this value
+	public float scale = 50; // TODO: Use this valuef
+    public float timeStep = 0.8f;
+	public float vorticity = 0.8f;
 	public int stepc = 0;
 	public ComputeShader noiseShader;
 
@@ -115,7 +116,7 @@ public class PostProcess : MonoBehaviour
 		}
 		
 		fireComputeShader.SetTexture(handle, "debugTex", debugTex);
-		fireComputeShader.SetFloat("timeStep", 0.8f);
+		fireComputeShader.SetFloat("timeStep", timeStep);
 		fireComputeShader.SetInt("size", size);
 
 
@@ -179,7 +180,7 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(advectionHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(advectionHandle, "fuelTex", fuelTex);
 		fireComputeShader.SetTexture(advectionHandle, "fuelTexRes", fuelTexRes);
-		fireComputeShader.SetFloat("timeStep", 0.8f);
+		fireComputeShader.SetFloat("timeStep", timeStep);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
 		GL.Flush();
 
@@ -213,6 +214,7 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(vorticityApplyHandle, "debugTex", debugTex);
 		fireComputeShader.SetTexture(vorticityApplyHandle, "vorticityTex", vorticityTex);
 		fireComputeShader.SetTexture(vorticityApplyHandle, "velocityTexRes", velocityTexRes);
+		fireComputeShader.SetFloat("vorticityStrength", vorticity);
 		fireComputeShader.Dispatch(vorticityApplyHandle, size / 8, size / 8, size / 8);
 
 		// Switch res

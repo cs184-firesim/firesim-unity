@@ -596,7 +596,8 @@ MonoBehaviour:
   sun: {fileID: 705507994}
   size: 128
   scale: 50
-  step_size: 0.001
+  timeStep: 0.8
+  vorticity: 0.5
   stepc: 0
   noiseShader: {fileID: 7200000, guid: 56e7ca782b4646c449edf0865e58437a, type: 3}
   fireComputeShader: {fileID: 7200000, guid: 674f657a5c5d84dc2bca61265fdc934b, type: 3}
