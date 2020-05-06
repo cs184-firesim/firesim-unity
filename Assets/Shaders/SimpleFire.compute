@@ -72,9 +72,9 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
 [numthreads(8,8,8)]
 void ApplyBuoyancy (uint3 id : SV_DispatchThreadID) {
     float3 v = id;
-    float SIGMA = 1.0;
+    float SIGMA = 1;
     float KAPPA = 0.2;
-    float T0 = 5.0;
+    float T0 = 5.5;
 
     float temperature = temperatureTex[id];
 
@@ -235,7 +235,7 @@ void ApplyVorticity (uint3 id : SV_DispatchThreadID)
 {
     uint3 v = id;
     uint size_ = uint(size);
-    float STRENGTH = 0.2f;
+    float STRENGTH = 0.5f;
 
     float omegaL = 0.0;
     float omegaR = 0.0;

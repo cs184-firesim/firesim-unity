@@ -105,15 +105,19 @@
                 float4 blue = float4(.141f, .651f, .98f, 0);
                 float4 red = float4(.71f, .17f, .11f, 0);
                 float4 orangeRed = float4(1, .635f, .365f, 0) * 0.7;
+                float4 darkYellow = yellow * 0.7;
+                // float4 orange = 
                 // Defualt
                 // return yellow * strength;
                 // Experimental
-                if (strength < 0.9) {
-                    return yellow * strength;
+                if (strength < 0.1) {
+                    return float4(0, 0, 0, 0);
+                } else if (strength < 0.9) {
+                    return darkYellow * (strength - 0.1) / 0.9;
                 } else if (strength < 0.95) {
-                    return lerp(yellow, orangeRed, (strength - 0.9) * 20);
+                    return lerp(darkYellow, yellow, (strength - 0.9) * 20);
                 } else {
-                    return orangeRed * (1 - (strength - 0.95) * 20);
+                    return yellow * (1 - (strength - 0.95) * 20);
                 }
             }
 
@@ -147,7 +151,7 @@
                     float3 rayPosObject = (rayPos - boundsMin) / (boundsMax - boundsMin);
                     float d = max(Density.SampleLevel(samplerDensity, rayPosObject, 0) * distDelta, 0);
                     totalDensity += d;
-                    totalEnergy += 2.0 * exp(-d) * (1-exp(-3*d)) * HenyeyGreenstein(lightDirection, dir, 0.05);
+                    totalEnergy += 2.0 * exp(-d) * (1-exp(-2*d)) * HenyeyGreenstein(lightDirection, dir, 0.05);
                     totalFuel += max(Fuel.SampleLevel(samplerFuel, rayPosObject, 0) * distDelta, 0);
                     dstTravelled += stepSize;
                 }
@@ -159,9 +163,10 @@
                 float lightColorContribution = 0.2;
                 smokeColor = lerp(smokeColor, lightColor, lightColorContribution);
                 // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
-                float strength = exp(-totalFuel*0.03);
+                float strength = exp(-totalFuel*0.07);
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
-                return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength);
+                // return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength); // with smoke
+                return col + flameColor(strength);
             }
 
             ENDCG
