@@ -51,7 +51,7 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
     float4 dist_vec = float4(dx, dy, dz, 0);
 
 
-    if (from_center > RADIUS || id.y > 0) return;
+    if (from_center > RADIUS || id.y != 4) return;
 
     
     velocityTexRes[id] = float4(0,0.5,0,0);
