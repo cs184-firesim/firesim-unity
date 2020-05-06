@@ -17,8 +17,6 @@ RWTexture3D<float> debugTex;
 int size;
 
 
-// timeStep of simulation
-
 float timeStep;
 float vorticityStrength;
 

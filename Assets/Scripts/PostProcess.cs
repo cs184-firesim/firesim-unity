@@ -9,6 +9,10 @@ public class PostProcess : MonoBehaviour
 	Material material; // Material for fireShader
 	public Transform container; // Container for our fire
 
+	// Color
+	public Color fireColor0;
+	public Color fireColor1;
+
 	// Light
 	public Light sun;
 
@@ -289,6 +293,8 @@ public class PostProcess : MonoBehaviour
 		material.SetVector("boundsMax", container.position + container.localScale / 2);
 		material.SetVector("lightDirection", sun.transform.forward);
 		material.SetVector("lightColor", sun.color);
+		material.SetVector("fireColor0", fireColor0);
+		material.SetVector("fireColor1", fireColor1);
 		//updateEverything();
 		updateFire();
 		// Render

@@ -593,6 +593,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fireShader: {fileID: 4800000, guid: d4c17abcdbe566046b5879b697c17bc1, type: 3}
   container: {fileID: 560899886}
+  fireColor0: {r: 1, g: 0.62352943, b: 0, a: 1}
+  fireColor1: {r: 1, g: 0.62352943, b: 0, a: 1}
   sun: {fileID: 705507994}
   size: 128
   scale: 50

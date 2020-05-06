@@ -53,6 +53,9 @@
             // Light
             float3 lightDirection;
             float4 lightColor;
+            // Colors
+            float4 fireColor0;
+            float4 fireColor1;
 
             float HenyeyGreenstein ( float3 inLightVector , float3 inViewVector, float inG )
             {
@@ -113,11 +116,11 @@
                 if (strength < 0.1) {
                     return float4(0, 0, 0, 0);
                 } else if (strength < 0.9) {
-                    return darkYellow * (strength - 0.1) / 0.9;
+                    return fireColor0 * (strength - 0.1) / 0.9;
                 } else if (strength < 0.95) {
-                    return lerp(darkYellow, yellow, (strength - 0.9) * 20);
+                    return lerp(fireColor0, fireColor1, (strength - 0.9) * 20);
                 } else {
-                    return yellow * (1 - (strength - 0.95) * 20);
+                    return fireColor1 * (1 - (strength - 0.95) * 20);
                 }
             }
 
@@ -168,7 +171,7 @@
                 if (strength < 0.95) { // without smoke
                     return col + flameColor(strength);
                 }
-                return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength); // with smoke
+                return lerp(totalEnergy * smokeColor, col, transmittance) * strength + flameColor(strength); // with smoke
             }
 
             ENDCG
