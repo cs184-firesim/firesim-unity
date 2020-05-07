@@ -174,14 +174,13 @@
                 // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
                 float strength = exp(-totalFuel*0.07);
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
-                if (totalEmber > 0.5 || totalDebug >0.1) {
-                    return float4(1.0, 1.0, 1.0, 0);
-                }
                 if (strength < 0.95) { // without smoke
                     return col + flameColor(strength);
                 }
-
-                return lerp(totalEnergy * smokeColor, col, transmittance) * strength + flameColor(strength); // with smoke
+                if (totalEmber > 0.5) {
+                    return float4(1, .3686278, 0, 0) * totalEmber * 2.5 + col * 0.5;
+                }
+                return lerp(totalEnergy * smokeColor, col, transmittance) * strength + flameColor(strength) + float4(1, .3686278, 0, 0) * totalEmber * 0.3; // with smoke
             }
 
             ENDCG
