@@ -1,6 +1,8 @@
 ﻿// Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 
+#include "SimpleNoise.compute"
+
 Texture3D<float4> velocityTex;
 RWTexture3D<float4> velocityTexRes;
 Texture3D<float> pressureTex;
@@ -14,8 +16,10 @@ RWTexture3D<float> fuelTexRes;
 RWTexture3D<float> divergenceTex;
 RWTexture3D<float4> vorticityTex;
 RWTexture3D<float> debugTex;
+Texture3D<float4> emberTex;
+RWTexture3D<float4> emberTexRes;
 int size;
-
+int stepCount;
 
 // timeStep of simulation
 
@@ -64,7 +68,13 @@ void InitFire (uint3 id : SV_DispatchThreadID) {
     
     //if (velocityTexRes[id].y > 0.5) debugTex[id] = 1.0f;
 
-
+    float3 hash_ = v;
+    hash_.x += sin(stepCount);
+    hash_.y += cos(stepCount);
+    float4 noise = snoise(hash_);
+    if (noise.x > 0.92  && emberTexRes[id].x < 0.1) {
+        emberTexRes[uint3(id.x, id.y+5, id.z)] = float4(1.0f, v.xyz);
+    }
 }
 
 #pragma kernel ApplyBuoyancy
@@ -163,7 +173,19 @@ void Advection (uint3 id : SV_DispatchThreadID)
         temperatureTex[uint3(hx, hy, hz)]*lxd*lyd*lzd)+combusted_fuel;
 
 
-
+    if (emberTex[id].x > 0.5f)
+    {
+        float4 particle = emberTex[id];
+        float3 particlePos = emberTex[id].yzw; // Warning: potential bug source
+        particlePos += cellVelocity * timeStep;
+        //particlePos = particlePos + float3(0.0, 0.5, 0.0);
+        int newX = floor(particlePos.x);
+        int newY = floor(particlePos.y);
+        int newZ = floor(particlePos.z);
+        if (0 <= newX && newX < size && 0 <= newY && newY < size && 0 <= newZ && newZ < size){
+            emberTexRes[int3(newX, newY, newZ)] = float4(emberTex[id].x*0.996, particlePos.x, particlePos.y, particlePos.z);
+        }
+    }
 }
 
 #pragma kernel Divergence
@@ -372,7 +394,6 @@ void Clear (uint3 id : SV_DispatchThreadID) {
     temperatureTexRes[id] = 0;
     //densityTex[id] = 0;
     densityTexRes[id] = 0;
-
 }
 
 // Need a second kernel because only 8 writes are allowed per kernel
@@ -380,6 +401,12 @@ void Clear (uint3 id : SV_DispatchThreadID) {
 [numthreads(8,8,8)]
 void Clear2 (uint3 id : SV_DispatchThreadID) {
     divergenceTex[id] = 0;
+}
+
+#pragma kernel ClearEmberTarget
+[numthreads(8,8,8)]
+void ClearEmberTarget (uint3 id : SV_DispatchThreadID) {
+    emberTexRes[id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 

@@ -44,6 +44,8 @@
             SamplerState samplerTemperature;
             Texture3D<float> Fuel;
             SamplerState samplerFuel;
+            Texture3D<float> Ember;
+            SamplerState samplerEmber;
             float4 _MainTex_ST; // x,y contains texture scale, and z,w contains translation
             // Container
             float3 boundsMin;
@@ -146,6 +148,8 @@
                 float totalDensity = 0;
                 float totalEnergy = 0; // Light contribution from the sun
                 float totalFuel = 0;
+                float totalDebug = 0;
+                float totalEmber = 0;
                 while (dstTravelled < distDelta) {
                     float3 rayPos = origin + dir * (dstTravelled + distToBox);
                     float3 rayPosObject = (rayPos - boundsMin) / (boundsMax - boundsMin);
@@ -153,6 +157,8 @@
                     totalDensity += d;
                     totalEnergy += 2.0 * exp(-d) * (1-exp(-2*d)) * HenyeyGreenstein(lightDirection, dir, 0.05);
                     totalFuel += max(Fuel.SampleLevel(samplerFuel, rayPosObject, 0) * distDelta, 0);
+                    totalEmber += max(Ember.SampleLevel(samplerEmber, rayPosObject, 0).x * distDelta, 0);
+                    totalDebug += max(Debug.SampleLevel(samplerDebug, rayPosObject, 0) * distDelta, 0);
                     dstTravelled += stepSize;
                 }
                 float transmittance = min(1, exp(-totalDensity) + 0);
@@ -165,9 +171,13 @@
                 // smokeColor = lightColor * lightColorContribution + smokeColor * (1-lightColorContribution);
                 float strength = exp(-totalFuel*0.07);
                 // return col*transmittance + (1-transmittance) * totalEnergy * smokeColor + strength * flameColor;
+                if (totalEmber > 0.5 || totalDebug >0.1) {
+                    return float4(1.0, 1.0, 1.0, 0);
+                }
                 if (strength < 0.95) { // without smoke
                     return col + flameColor(strength);
                 }
+                
                 return lerp(totalEnergy * smokeColor, col, transmittance) + flameColor(strength); // with smoke
             }
 

@@ -31,12 +31,16 @@ public class PostProcess : MonoBehaviour
 	RenderTexture vorticityTex;
 	RenderTexture densityTex;
 	RenderTexture densityTexRes;
+	RenderTexture emberTex;
+	RenderTexture emberTexRes;
 	RenderTexture fuelTex;
 	RenderTexture fuelTexRes;
 	RenderTexture debugTex;
 
     // Ray marching
     public int marchSteps = 4;
+    // Used for time related rng
+	private int stepCount = 0;
 
 	// If the specified texture does not exist, create it
     // Source: https://github.com/SebLague/Clouds
@@ -118,8 +122,6 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetFloat("timeStep", 0.8f);
 		fireComputeShader.SetInt("size", size);
 
-
-
 		fireComputeShader.Dispatch(handle, size / 8, size / 8, size / 8);
 
 		stepc += 1;
@@ -151,6 +153,8 @@ public class PostProcess : MonoBehaviour
 		createTexture(ref divergenceTex, size, 1);
 		createTexture(ref fuelTex, size, 1);
 		createTexture(ref fuelTexRes, size, 1);
+		createTexture(ref emberTex, size, 4);
+		createTexture(ref emberTexRes, size, 4);
 		createTexture(ref debugTex, size, 1);
 
 		// Find kernel
@@ -162,6 +166,7 @@ public class PostProcess : MonoBehaviour
         int buoyancyHandle = fireComputeShader.FindKernel("ApplyBuoyancy");
 		int vorticityHandle = fireComputeShader.FindKernel("Vorticity");
 		int vorticityApplyHandle = fireComputeShader.FindKernel("ApplyVorticity");
+		int clearEmberHandle = fireComputeShader.FindKernel("ClearEmberTarget");
 
 		// static Input
 		foreach (int handle in new int[] {advectionHandle, divergenceHandle, jacobiHandle, projectionHandle })
@@ -169,6 +174,12 @@ public class PostProcess : MonoBehaviour
 			fireComputeShader.SetTexture(handle, "divergenceTex", divergenceTex);
 		}
 		fireComputeShader.SetInt("size", size);
+
+		// Clear Ember Target before filling new values
+		fireComputeShader.SetTexture(clearEmberHandle, "emberTexRes", emberTexRes);
+        fireComputeShader.Dispatch(clearEmberHandle, size / 8, size / 8, size / 8);
+		GL.Flush();
+
 		// Calculate Advection
 		fireComputeShader.SetTexture(advectionHandle, "velocityTex", velocityTex);
 		fireComputeShader.SetTexture(advectionHandle, "debugTex", debugTex);
@@ -179,10 +190,13 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(advectionHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(advectionHandle, "fuelTex", fuelTex);
 		fireComputeShader.SetTexture(advectionHandle, "fuelTexRes", fuelTexRes);
+		fireComputeShader.SetTexture(advectionHandle, "emberTex", emberTex);
+		fireComputeShader.SetTexture(advectionHandle, "emberTexRes", emberTexRes);
+		fireComputeShader.SetTexture(advectionHandle, "debugTex", debugTex);
 		fireComputeShader.SetFloat("timeStep", 0.8f);
+		fireComputeShader.SetInt("stepCount", stepCount);
 		fireComputeShader.Dispatch(advectionHandle, size / 8, size / 8, size / 8);
 		GL.Flush();
-
 
         // Initialization
 		fireComputeShader.SetTexture(initHandle, "debugTex", debugTex);
@@ -190,9 +204,11 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(initHandle, "velocityTexRes", velocityTexRes);
 		fireComputeShader.SetTexture(initHandle, "densityTexRes", densityTexRes);
 		fireComputeShader.SetTexture(initHandle, "temperatureTexRes", temperatureTexRes);
+		fireComputeShader.SetTexture(initHandle, "emberTexRes", emberTexRes);
 		fireComputeShader.Dispatch(initHandle, size / 8, size / 8, size / 8);
 
 		swap(ref fuelTex, ref fuelTexRes);
+		swap(ref emberTex, ref emberTexRes);
 
 		// Calculate Buoyancy
 		fireComputeShader.SetTexture(buoyancyHandle, "debugTex", debugTex);
@@ -252,7 +268,10 @@ public class PostProcess : MonoBehaviour
 		material.SetTexture("Density", densityTex);
 		material.SetTexture("Temperature", temperatureTex);
 		material.SetTexture("Fuel", fuelTex);
+		material.SetTexture("Ember", emberTex);
 		material.SetTexture("Debug", debugTex);
+
+	    stepCount += 1;
 	}
 
 	private void swap(ref RenderTexture t1, ref RenderTexture t2) {
@@ -274,8 +293,10 @@ public class PostProcess : MonoBehaviour
 		fireComputeShader.SetTexture(clearKernel1, "pressureTex", pressureTex);
 		fireComputeShader.SetTexture(clearKernel1, "pressureTexRes", pressureTexRes);
 		fireComputeShader.SetTexture(clearKernel2, "divergenceTex", divergenceTex);
+		fireComputeShader.SetTexture(clearKernel2, "emberTex", emberTex);
 		fireComputeShader.Dispatch(clearKernel1, size / 8, size / 8, size / 8);
 		fireComputeShader.Dispatch(clearKernel2, size / 8, size / 8, size / 8);
+		stepCount = 0;
 	}
 
 	// Source: framebuffer after unity's pipeline
