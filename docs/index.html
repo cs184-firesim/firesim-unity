@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8">
     <title>Realistic Fire Simulation and Rendering</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
     <link rel="stylesheet" href="css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
   </head>
@@ -34,25 +38,48 @@
             </div>
         </div>
     </section>
-    <section class="section">
+    <section class="section no-top-padding">
         <div class="container">
-            <h1 class="title">
+        <h1 class="title">
             Technical Approach
-            </h1>
-            <h2 class="title is-4">
+        </h1>
+        <h2 class="title is-4">
             2D Fire
-            </h2>
-            <p>
-                In this project, we achieved real time simulation and rendering of fire effects in both 2D and 3D. Our implementation utilized Unity post processing and HLSL shaders as the programming platform, and we adopted popular techniques in noise generation, physical simulation and volumetric rendering. Our 2D fire is implemented with panning Voronoi noise and Perlin noise, while our 3D fire relies on a custom fluid-simulation and ray-marching procedure. We measured our rendering effects and performance on an NVIDIA 2060 graphics card and obtained near real-time results.
-            </p>
+        </h2>
+        <p>
+            We multiplied Voronoi noise and Perlin noise textures and interpolated their product with a standard u-v texture. We then took Gaussian Blob samples to simulate the features of fire. Lastly, we applied a color gradient to give an orange color to the blob.
+        </p>
+        <figure class="image has-text-centered">
+            <img src="images/nodegraph.PNG">
+            <figcaption>Complete Node Graph</figcaption>
+        </figure>
+        <h2 class="title is-4">
+            3D Fire
+        </h2>
+        <h3 class="subtitle">Simulation</h3>
+        <p>
+            We decided to use 3D textures to hold different attributes that describe a fire. In our simulation, we calculated the corresponding values for velocity, smoke density, temperature, and fuel level in each cell of a 3D voxelized grid.
+            </br></br>
+            We based our simulation off the Navier Stokes equation for fluid dynamics:
+
+            $$\frac{\partial u}{\partial t} = -(u \cdot \nabla) u - \frac{1}{\rho} \nabla p + f$$
+
+            In the formula, \(u\) is the velocity, \(p\) is the pressure, \(\rho\) is the density of the molecule mass, and \(f\) is the external force on molecules. The first term represents the advection, which is the velocity of a fluid that causes the fluid to transport objects, densities, and other quantities along with the flow. The term inside the parenthesis is the divergence, which represents the rate at which density exits the region. The second term simulates how pressure gathers and generates force and provides accelerations to the surrounding molecules.
+            </br></br>
+            For each time step, we compute the advection and divergence based on the interaction between neighboring voxels, and propagate the changes in temperature, pressure, and velocity correspondingly. We then update the values in each 3D texture and render the resulting volume to the screen with the rendering pipeline.
+            </br></br>
+            For the external force field of the Navier Stokes equation, we simulated both buoyant force and vorticity force using the following equations:
+
+            $$f_{buoyancy} = \frac{Pmg}{R} (\frac{1}{T_0} - \frac{1}{T})z$$
+            $$f_{vc} = \epsilon(\Psi \times \omega)\delta x$$
+            $$\Psi = \frac{\eta}{|\eta|}$$
+            $$\eta = \nabla |\omega|$$
+
+            The buoyant force is influenced by temperature and density, and it changes the velocity of molecules to make the simulation more realistic. With a higher temperature, the molecules will rise with a larger velocity. The other force that we applied to our molecules is vorticity force. This force helps us restore some of the curling behavior of smoke that was lost due to the discrete nature of the simulation.
+            </br></br>
+            Below is the simulation pipeline that we used. It outputs the values in 3D Textures encoding.
+        </p>
         </div>
     </section>
-    <div class="columns is-desktop is-centered">
-        <!-- <div class="column is-three-quarters">
-            <div class="container is-fluid">
-                <h1 class="title">Hello World</h1>
-            </div>
-        </div> -->
-    </div>
   </body>
 </html>
