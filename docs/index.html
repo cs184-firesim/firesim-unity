@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Realistic Fire Simulation and Rendering</title>
     <link rel="stylesheet" href="css/bulma.css">
+    <link rel="stylesheet" href="css/styles.css">
   </head>
   <body>
     <section class="section">
@@ -17,6 +18,20 @@
             <p class="content">
                 In this project, we achieved real time simulation and rendering of fire effects in both 2D and 3D. Our implementation utilized Unity post processing and HLSL shaders as the programming platform, and we adopted popular techniques in noise generation, physical simulation and volumetric rendering. Our 2D fire is implemented with panning Voronoi noise and Perlin noise, while our 3D fire relies on a custom fluid-simulation and ray-marching procedure. We measured our rendering effects and performance on an NVIDIA 2060 graphics card and obtained near real-time results.
             </p>
+            <div class="columns is-mobile is-centered has-text-centered">
+                <div class="column is-one-quarter-tablet is-half-mobile">
+                    <figure class="image">
+                        <img src="images/2d-fire.png">
+                        <figcaption>Noise-based 2D Fire</figcaption>
+                    </figure>
+                </div>
+                <div class="column is-one-quarter-tablet">
+                    <figure class="image">
+                        <img src="images/3d-fire.gif">
+                        <figcaption>Voxel-based 3D Fire</figcaption>
+                    </figure>
+                </div>
+            </div>
         </div>
     </section>
     <section class="section">
